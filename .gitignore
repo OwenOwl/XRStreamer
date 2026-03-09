@@ -1,0 +1,26 @@
+# Auto-generated Visual Studio / Rider / IDE files
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Blender temp import files
+*.blend1
+*.blend1.meta
+
+# Crash / logs
+*.log
