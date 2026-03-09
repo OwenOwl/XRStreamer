@@ -3,8 +3,7 @@ Shader "Unlit/FisheyeSBS_VR180"
     Properties
     {
         _MainTex ("SBS Video", 2D) = "black" {}
-        _FovDeg ("Fisheye FOV", Range(120, 220)) = 180
-        _Radius ("Circle Radius", Range(0.3, 0.5)) = 0.48
+        _ProjectionScale ("Projection Scale", Range(0.5, 1.0)) = 0.82
         _CenterX ("Circle Center X", Range(0.0, 1.0)) = 0.50
         _CenterY ("Circle Center Y", Range(0.0, 1.0)) = 0.50
         _FlipY ("Flip Y", Float) = 1
@@ -27,8 +26,7 @@ Shader "Unlit/FisheyeSBS_VR180"
             #include "UnityCG.cginc"
 
             sampler2D _MainTex;
-            float _FovDeg;
-            float _Radius;
+            float _ProjectionScale;
             float _CenterX;
             float _CenterY;
             float _FlipY;
@@ -57,17 +55,19 @@ Shader "Unlit/FisheyeSBS_VR180"
                 return o;
             }
 
+            bool IsInsideHalfUV(float2 uvHalf)
+            {
+                return uvHalf.x >= 0.0 && uvHalf.x <= 1.0 &&
+                    uvHalf.y >= 0.0 && uvHalf.y <= 1.0;
+            }
+
             float2 DirToFisheyeUV(float3 d)
             {
                 float theta = acos(saturate(d.z));
                 theta = min(theta, 0.5 * UNITY_PI);
 
                 float phi = atan2(d.y, d.x);
-
-                float fovRad = radians(_FovDeg);
-                float rNorm = theta / (0.5 * fovRad);
-
-                float r = rNorm * _Radius;
+                float r = 1.0 * _ProjectionScale * sin(theta * 0.5);
                 float2 uv;
                 uv.x = _CenterX + r * cos(phi);
                 uv.y = _CenterY + r * sin(phi) * _FlipY;
@@ -85,13 +85,17 @@ Shader "Unlit/FisheyeSBS_VR180"
                     return fixed4(0,0,0,1);
 
                 float2 uvHalf = DirToFisheyeUV(d);
+    
+                // Clip outside the fisheye circle
+                bool inside = IsInsideHalfUV(uvHalf);
+                if (!inside)
+                    return fixed4(0,0,0,1);
 
                 float eye = unity_StereoEyeIndex;
                 float2 uv;
                 uv.x = (uvHalf.x + eye) * 0.5;
                 uv.y = uvHalf.y;
 
-                uv = saturate(uv);  
                 return tex2D(_MainTex, uv);
             }
             ENDHLSL
