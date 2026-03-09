@@ -654,6 +654,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1642479864}
+  - component: {fileID: 1642479867}
+  - component: {fileID: 1642479866}
+  - component: {fileID: 1642479865}
   m_Layer: 0
   m_Name: DomeRoot
   m_TagString: Untagged
@@ -677,6 +680,49 @@ Transform:
   - {fileID: 1281527483}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1642479865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1642479863}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f411837f6cd864ac58df45c895169d6b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FisheyeMaterialDebug
+  mat: {fileID: 2100000, guid: ed5ec0187bb682242b47f2e9b00c12e0, type: 2}
+--- !u!114 &1642479866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1642479863}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 847c6ebe58c3049cebee120ef5e89ae9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KeyboardRotationDebug
+  stabilizer: {fileID: 1642479867}
+  yawSpeed: 60
+  pitchSpeed: 60
+  rollSpeed: 60
+--- !u!114 &1642479867
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1642479863}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e992db064d02c472db011b8942d15a2c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DomeStabilizer
+  robotRotation: {x: 0, y: 0, z: 0, w: 1}
+  yawOnly: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
