@@ -3,10 +3,10 @@ Shader "Unlit/FisheyeSBS_VR180"
     Properties
     {
         _MainTex ("SBS Video", 2D) = "black" {}
-        _FovDeg ("Fisheye FOV (deg)", Range(120, 220)) = 180
-        _Radius ("Circle Radius (0..0.5 of half)", Range(0.1, 0.5)) = 0.48
-        _CenterX ("Circle Center X (0..1 in half)", Range(0.0, 1.0)) = 0.50
-        _CenterY ("Circle Center Y (0..1 in half)", Range(0.0, 1.0)) = 0.50
+        _FovDeg ("Fisheye FOV", Range(120, 220)) = 180
+        _Radius ("Circle Radius", Range(0.3, 0.5)) = 0.48
+        _CenterX ("Circle Center X", Range(0.0, 1.0)) = 0.50
+        _CenterY ("Circle Center Y", Range(0.0, 1.0)) = 0.50
         _FlipY ("Flip Y", Float) = 1
     }
     SubShader
