@@ -18,11 +18,11 @@ def create_local_video_track(device_name: str, width: int, height: int, fps: int
             "video_size": f"{width}x{height}",
             "framerate": str(fps),
             # latency-related
-            # "fflags": "nobuffer",
-            # "flags": "low_delay",
-            # "avioflags": "direct",
-            # "probesize": "32",
-            # "analyzeduration": "0",
+            "fflags": "nobuffer",
+            "flags": "low_delay",
+            "avioflags": "direct",
+            "probesize": "32",
+            "analyzeduration": "0",
         }
         player = MediaPlayer(device_name, format="dshow", options=options)
     elif os_name == "linux":
