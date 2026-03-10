@@ -512,7 +512,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 20, y: 20, z: 20}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 1642479864}
@@ -655,7 +655,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1642479864}
   - component: {fileID: 1642479867}
-  - component: {fileID: 1642479868}
   - component: {fileID: 1642479869}
   m_Layer: 0
   m_Name: DomeRoot
@@ -694,19 +693,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DomeStabilizer
   robotRotation: {x: 0, y: 0, z: 0, w: 1}
   yawOnly: 0
---- !u!114 &1642479868
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1642479863}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 847c6ebe58c3049cebee120ef5e89ae9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::XRControllerRotationDebug
-  mat: {fileID: 2100000, guid: ed5ec0187bb682242b47f2e9b00c12e0, type: 2}
 --- !u!114 &1642479869
 MonoBehaviour:
   m_ObjectHideFlags: 0

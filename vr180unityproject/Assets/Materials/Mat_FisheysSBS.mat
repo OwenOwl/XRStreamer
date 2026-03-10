@@ -101,7 +101,7 @@ Material:
     - _DstBlendAlpha: 0
     - _EnvironmentReflections: 1
     - _FlipY: 1
-    - _FovDeg: 155.9
+    - _FovDeg: 160
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
@@ -110,7 +110,7 @@ Material:
     - _Parallax: 0.005
     - _ProjectionScale: 0.82
     - _QueueOffset: 0
-    - _Radius: 0.451
+    - _Radius: 0.52
     - _ReceiveShadows: 1
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
