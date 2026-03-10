@@ -656,6 +656,7 @@ GameObject:
   - component: {fileID: 1642479864}
   - component: {fileID: 1642479867}
   - component: {fileID: 1642479869}
+  - component: {fileID: 1642479870}
   m_Layer: 0
   m_Name: DomeRoot
   m_TagString: Untagged
@@ -700,7 +701,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1642479863}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e1a4b2ba579a8c549b6f891c811aab35, type: 3}
   m_Name: 
@@ -708,6 +709,20 @@ MonoBehaviour:
   signalingBaseUrl: http://127.0.0.1:8080
   targetRenderer: {fileID: 1281527485}
   textureProperty: _MainTex
+--- !u!114 &1642479870
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1642479863}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aeb50d8ebe0959a45a72708d6d46c485, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OBSReceiver
+  cameraName: OBS Virtual Camera
+  targetRenderer: {fileID: 1281527485}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
