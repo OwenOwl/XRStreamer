@@ -656,6 +656,7 @@ GameObject:
   - component: {fileID: 1642479864}
   - component: {fileID: 1642479867}
   - component: {fileID: 1642479868}
+  - component: {fileID: 1642479869}
   m_Layer: 0
   m_Name: DomeRoot
   m_TagString: Untagged
@@ -705,11 +706,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 847c6ebe58c3049cebee120ef5e89ae9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::XRControllerRotationDebug
-  stabilizer: {fileID: 1642479867}
   mat: {fileID: 2100000, guid: ed5ec0187bb682242b47f2e9b00c12e0, type: 2}
-  yawSpeed: 60
-  pitchSpeed: 60
-  rollSpeed: 60
+--- !u!114 &1642479869
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1642479863}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1a4b2ba579a8c549b6f891c811aab35, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WebRTCVideoReceiver
+  signalingBaseUrl: http://127.0.0.1:8080
+  targetRenderer: {fileID: 1281527485}
+  textureProperty: _MainTex
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
