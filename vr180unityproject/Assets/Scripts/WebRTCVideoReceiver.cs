@@ -21,6 +21,8 @@ public class WebRTCVideoReceiver : MonoBehaviour
 
     IEnumerator Start()
     {
+        Application.targetFrameRate = 120;
+        QualitySettings.vSyncCount = 0;
         StartCoroutine(WebRTC.Update());
 
         if (targetRenderer == null)
@@ -55,13 +57,13 @@ public class WebRTCVideoReceiver : MonoBehaviour
             direction = RTCRtpTransceiverDirection.RecvOnly
         });
 
-        var codecs = RTCRtpReceiver.GetCapabilities(TrackKind.Video).codecs;
-        var h264 = codecs.Where(c => c.mimeType == "video/H264").ToArray();
-        var err = transceiver.SetCodecPreferences(h264);
-        if (err != RTCErrorType.None)
-        {
-            Debug.LogWarning($"SetCodecPreferences error: {err}");
-        }
+        // var codecs = RTCRtpReceiver.GetCapabilities(TrackKind.Video).codecs;
+        // var h264 = codecs.Where(c => c.mimeType == "video/H264").ToArray();
+        // var err = transceiver.SetCodecPreferences(h264);
+        // if (err != RTCErrorType.None)
+        // {
+        //     Debug.LogWarning($"SetCodecPreferences error: {err}");
+        // }
 
         // Create offer
         var op = pc.CreateOffer();
