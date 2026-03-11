@@ -722,6 +722,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OBSReceiver
   cameraName: OBS Virtual Camera
+  width: 3840
+  height: 1920
+  fps: 30
   targetRenderer: {fileID: 1281527485}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

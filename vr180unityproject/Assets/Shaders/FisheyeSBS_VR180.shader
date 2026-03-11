@@ -4,7 +4,7 @@ Shader "Unlit/FisheyeSBS_VR180"
     {
         _MainTex ("SBS Video", 2D) = "black" {}
         _FovDeg ("Fisheye FOV", Range(120, 220)) = 160
-        _Radius ("Circle Radius", Range(0.3, 0.7)) = 0.52
+        _Radius ("Circle Radius", Range(0.3, 0.7)) = 0.581
         _CenterX ("Circle Center X", Range(0.0, 1.0)) = 0.50
         _CenterY ("Circle Center Y", Range(0.0, 1.0)) = 0.50
         _FlipY ("Flip Y", Float) = 1
