@@ -1,14 +1,18 @@
-Shader "Unlit/FisheyeSBS_VR180"
+Shader "Unlit/FisheyeSBS_VR180_ProjModes"
 {
     Properties
     {
         _MainTex ("SBS Video", 2D) = "black" {}
         _FovDeg ("Fisheye FOV", Range(120, 220)) = 160
-        _Radius ("Circle Radius", Range(0.3, 0.7)) = 0.581
+        _Radius ("Circle Radius", Range(0.3, 0.7)) = 0.52
         _CenterX ("Circle Center X", Range(0.0, 1.0)) = 0.50
         _CenterY ("Circle Center Y", Range(0.0, 1.0)) = 0.50
         _FlipY ("Flip Y", Float) = 1
+
+        // 0=Equidistant, 1=Equisolid, 2=Stereographic, 3=Orthographic
+        _ProjMode ("Projection Mode", Range(0, 3)) = 1
     }
+
     SubShader
     {
         Tags { "RenderType"="Opaque" "Queue"="Geometry" }
@@ -32,6 +36,7 @@ Shader "Unlit/FisheyeSBS_VR180"
             float _CenterX;
             float _CenterY;
             float _FlipY;
+            float _ProjMode;
 
             struct appdata
             {
@@ -60,24 +65,42 @@ Shader "Unlit/FisheyeSBS_VR180"
             bool IsInsideHalfUV(float2 uvHalf)
             {
                 return uvHalf.x >= 0.0 && uvHalf.x <= 1.0 &&
-                    uvHalf.y >= 0.0 && uvHalf.y <= 1.0;
+                       uvHalf.y >= 0.0 && uvHalf.y <= 1.0;
+            }
+
+            float ModelRadius(float theta, float mode)
+            {
+                // Unnormalized fisheye radius law
+                if (mode < 0.5)           return theta;                   // equidistant
+                else if (mode < 1.5)      return 2.0 * sin(0.5 * theta);  // equisolid
+                else if (mode < 2.5)      return 2.0 * tan(0.5 * theta);  // stereographic
+                else                      return sin(theta);              // orthographic
             }
 
             float2 DirToFisheyeUV(float3 d)
             {
-                float theta = acos(saturate(d.z));
-                theta = min(theta, 0.5 * UNITY_PI);
+                d = normalize(d);
 
+                // VR180 front hemisphere only
+                if (d.z <= 0.0)
+                    return float2(-1.0, -1.0);
+
+                float theta = acos(saturate(d.z));
                 float phi = atan2(d.y, d.x);
 
                 float fovRad = radians(_FovDeg);
-                float rNorm = theta / (0.5 * fovRad);
+                float thetaMax = 0.5 * fovRad;
 
+                // Normalize radius using the chosen model at thetaMax
+                float rRaw = ModelRadius(theta, _ProjMode);
+                float rMax = max(ModelRadius(thetaMax, _ProjMode), 1e-6);
+
+                float rNorm = rRaw / rMax;
                 float r = rNorm * _Radius;
+
                 float2 uv;
                 uv.x = _CenterX + r * cos(phi);
                 uv.y = _CenterY + r * sin(phi) * _FlipY;
-
                 return uv;
             }
 
@@ -86,14 +109,9 @@ Shader "Unlit/FisheyeSBS_VR180"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
                 float3 d = normalize(i.dir);
-
-                if (d.z < 0.0)
-                    return fixed4(0,0,0,1);
-
                 float2 uvHalf = DirToFisheyeUV(d);
 
-                bool inside = IsInsideHalfUV(uvHalf);
-                if (!inside)
+                if (!IsInsideHalfUV(uvHalf))
                     return fixed4(0,0,0,1);
 
                 float eye = unity_StereoEyeIndex;
@@ -101,8 +119,7 @@ Shader "Unlit/FisheyeSBS_VR180"
                 uv.x = (uvHalf.x + eye) * 0.5;
                 uv.y = uvHalf.y;
 
-                uv = saturate(uv);  
-                return tex2D(_MainTex, uv);
+                return tex2D(_MainTex, saturate(uv));
             }
             ENDHLSL
         }
