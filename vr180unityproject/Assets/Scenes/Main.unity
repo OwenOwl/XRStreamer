@@ -736,14 +736,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 1642479863}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bf1c763b95f0c8e47b442ee6741a31eb, type: 3}
+  m_Script: {fileID: 11500000, guid: 350fc5e5803f99e42b55d2ea8739d205, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::XRDebug
-  stabilizer: {fileID: 1642479867}
-  yawSpeed: 60
-  pitchSpeed: 60
-  rollSpeed: 60
-  debugRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_EditorClassIdentifier: Assembly-CSharp::XRPoseUdpStreamer
+  targetIp: 192.168.0.232
+  targetPort: 5005
+  enableBroadcast: 0
+  targetHz: 120
+  useUnscaledTime: 1
+  refreshInterval: 1
+  verboseDeviceLogs: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
