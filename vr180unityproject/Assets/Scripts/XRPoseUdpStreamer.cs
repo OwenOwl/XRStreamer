@@ -84,7 +84,6 @@ public class XRPoseUdpStreamer : MonoBehaviour
             return;
         }
 
-        // Initial try, but do NOT assume devices are ready now.
         RefreshDevices();
     }
 
@@ -92,14 +91,12 @@ public class XRPoseUdpStreamer : MonoBehaviour
     {
         float now = GetNow();
 
-        // Periodically refresh devices because XR devices may appear late.
         if (now >= nextRefreshTime)
         {
             nextRefreshTime = now + Mathf.Max(0.1f, refreshInterval);
             RefreshDevices();
         }
 
-        // streaming clock
         if (now < nextSendTime)
             return;
 
@@ -107,7 +104,6 @@ public class XRPoseUdpStreamer : MonoBehaviour
         if (now > nextSendTime + 0.5f)
             nextSendTime = now + sendInterval;
 
-        // If any device became invalid, try refreshing immediately.
         if (!IsDeviceUsable(hmd) || !IsDeviceUsable(leftController) || !IsDeviceUsable(rightController))
         {
             RefreshDevices();
@@ -119,8 +115,22 @@ public class XRPoseUdpStreamer : MonoBehaviour
         bool okLeft = TryGetPose(leftController, out var leftPos, out var leftQuat);
         bool okRight = TryGetPose(rightController, out var rightPos, out var rightQuat);
 
-        int leftButton = TryGetButtonMask(leftController);
-        int rightButton = TryGetButtonMask(rightController);
+        Vector2 leftStick = TryGetAxis2D(leftController, CommonUsages.primary2DAxis);
+        Vector2 rightStick = TryGetAxis2D(rightController, CommonUsages.primary2DAxis);
+
+        float leftTrigger = TryGetAxis1D(leftController, CommonUsages.trigger);
+        float rightTrigger = TryGetAxis1D(rightController, CommonUsages.trigger);
+
+        float leftGrip = TryGetAxis1D(leftController, CommonUsages.grip);
+        float rightGrip = TryGetAxis1D(rightController, CommonUsages.grip);
+
+        int leftPrimaryButton = TryGetBool01(leftController, CommonUsages.primaryButton);
+        int leftSecondaryButton = TryGetBool01(leftController, CommonUsages.secondaryButton);
+        int leftStickClick = TryGetBool01(leftController, CommonUsages.primary2DAxisClick);
+
+        int rightPrimaryButton = TryGetBool01(rightController, CommonUsages.primaryButton);
+        int rightSecondaryButton = TryGetBool01(rightController, CommonUsages.secondaryButton);
+        int rightStickClick = TryGetBool01(rightController, CommonUsages.primary2DAxisClick);
 
         if (!okHmd)   { hmdPos = Vector3.zero;  hmdQuat = Quaternion.identity; }
         if (!okLeft)  { leftPos = Vector3.zero; leftQuat = Quaternion.identity; }
@@ -128,13 +138,33 @@ public class XRPoseUdpStreamer : MonoBehaviour
 
         string msg = string.Format(
             CultureInfo.InvariantCulture,
-            "FRAME,{0},HMD,{1},{2},{3},{4},{5},{6},{7},LEFTHAND,{8},{9},{10},{11},{12},{13},{14},LEFTBUTTON,{15},RIGHTHAND,{16},{17},{18},{19},{20},{21},{22},RIGHTBUTTON,{23}",
+            "FRAME,{0}," +
+            "HMD,{1},{2},{3},{4},{5},{6},{7}," +
+            "LEFTHAND,{8},{9},{10},{11},{12},{13},{14}," +
+            "LEFTSTICK,{15},{16}," +
+            "LEFTTRIGGER,{17}," +
+            "LEFTGRIP,{18}," +
+            "LEFTKEYS,{19},{20},{21}," +
+            "RIGHTHAND,{22},{23},{24},{25},{26},{27},{28}," +
+            "RIGHTSTICK,{29},{30}," +
+            "RIGHTTRIGGER,{31}," +
+            "RIGHTGRIP,{32}," +
+            "RIGHTKEYS,{33},{34},{35}",
             frameId,
+
             hmdPos.x, hmdPos.y, hmdPos.z, hmdQuat.x, hmdQuat.y, hmdQuat.z, hmdQuat.w,
+
             leftPos.x, leftPos.y, leftPos.z, leftQuat.x, leftQuat.y, leftQuat.z, leftQuat.w,
-            leftButton,
+            leftStick.x, leftStick.y,
+            leftTrigger,
+            leftGrip,
+            leftPrimaryButton, leftSecondaryButton, leftStickClick,
+
             rightPos.x, rightPos.y, rightPos.z, rightQuat.x, rightQuat.y, rightQuat.z, rightQuat.w,
-            rightButton
+            rightStick.x, rightStick.y,
+            rightTrigger,
+            rightGrip,
+            rightPrimaryButton, rightSecondaryButton, rightStickClick
         );
 
         try
@@ -258,30 +288,33 @@ public class XRPoseUdpStreamer : MonoBehaviour
         return trackedOk && posOk && rotOk;
     }
 
-    private int TryGetButtonMask(InputDevice device)
+    private Vector2 TryGetAxis2D(InputDevice device, InputFeatureUsage<Vector2> usage)
+    {
+        if (!device.isValid)
+            return Vector2.zero;
+
+        if (device.TryGetFeatureValue(usage, out Vector2 value))
+            return value;
+
+        return Vector2.zero;
+    }
+
+    private float TryGetAxis1D(InputDevice device, InputFeatureUsage<float> usage)
+    {
+        if (!device.isValid)
+            return 0f;
+
+        if (device.TryGetFeatureValue(usage, out float value))
+            return Mathf.Clamp01(value);
+
+        return 0f;
+    }
+
+    private int TryGetBool01(InputDevice device, InputFeatureUsage<bool> usage)
     {
         if (!device.isValid)
             return 0;
 
-        int mask = 0;
-
-        // bit0 primaryButton
-        // bit1 secondaryButton
-        // bit2 triggerButton
-        // bit3 gripButton
-        // bit4 primary2DAxisClick
-
-        if (TryGetBool(device, CommonUsages.primaryButton))      mask |= (1 << 0);
-        if (TryGetBool(device, CommonUsages.secondaryButton))    mask |= (1 << 1);
-        if (TryGetBool(device, CommonUsages.triggerButton))      mask |= (1 << 2);
-        if (TryGetBool(device, CommonUsages.gripButton))         mask |= (1 << 3);
-        if (TryGetBool(device, CommonUsages.primary2DAxisClick)) mask |= (1 << 4);
-
-        return mask;
-    }
-
-    private bool TryGetBool(InputDevice device, InputFeatureUsage<bool> usage)
-    {
-        return device.TryGetFeatureValue(usage, out bool value) && value;
+        return device.TryGetFeatureValue(usage, out bool value) && value ? 1 : 0;
     }
 }
