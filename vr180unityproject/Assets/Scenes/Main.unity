@@ -693,8 +693,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e992db064d02c472db011b8942d15a2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DomeStabilizer
+  portName: COM3
+  baudRate: 115200
+  autoOpenOnStart: 1
   robotRotation: {x: 0, y: 0, z: 0, w: 1}
-  yawOnly: 0
+  yawOnly: 1
+  accel_g: {x: 0, y: 0, z: 0}
+  angleVel_deg_s: {x: 0, y: 0, z: 0}
+  eulerDeg: {x: 0, y: 0, z: 0}
+  temperatureC: 0
 --- !u!114 &1642479869
 MonoBehaviour:
   m_ObjectHideFlags: 0
