@@ -204,15 +204,15 @@ public class DomeStabilizer : MonoBehaviour
                     temperatureC = vt / 340f + 36.25f;
 
                     Quaternion imuRotation = Quaternion.Euler(roll, pitch, yaw);
-                    Quaternion unityRotation = ConvertImuRotationToUnity(imuRotation);
-
                     if (!hasReferenceRotation)
                     {
-                        referenceRotation = unityRotation;
+                        referenceRotation = imuRotation;
                         hasReferenceRotation = true;
                     }
 
-                    robotRotation = Quaternion.Inverse(referenceRotation) * unityRotation;
+                    imuRotation = imuRotation * Quaternion.Inverse(referenceRotation);
+                    Quaternion unityRotation = ConvertImuRotationToUnity(imuRotation);
+                    robotRotation = unityRotation;
                     break;
 
                 default:
