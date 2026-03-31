@@ -697,7 +697,6 @@ MonoBehaviour:
   baudRate: 115200
   autoOpenOnStart: 1
   robotRotation: {x: 0, y: 0, z: 0, w: 1}
-  yawOnly: 1
   accel_g: {x: 0, y: 0, z: 0}
   angleVel_deg_s: {x: 0, y: 0, z: 0}
   eulerDeg: {x: 0, y: 0, z: 0}

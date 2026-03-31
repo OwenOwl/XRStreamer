@@ -28,13 +28,6 @@ public class DomeStabilizer : MonoBehaviour
     private bool hasReferenceRotation = false;
     private Quaternion referenceRotation = Quaternion.identity;
 
-    private static readonly Matrix4x4 axisMapMatrix = new Matrix4x4(
-        new Vector4( 0f, 0f, 1f, 0f),   // IMU +x -> Unity +z
-        new Vector4(-1f, 0f, 0f, 0f),   // IMU +y -> Unity -x
-        new Vector4( 0f, 1f, 0f, 0f),   // IMU +z -> Unity +y
-        new Vector4( 0f, 0f, 0f, 1f)
-    );
-
     void Start()
     {
         if (autoOpenOnStart)
@@ -203,7 +196,11 @@ public class DomeStabilizer : MonoBehaviour
                     eulerDeg = new Vector3(roll, pitch, yaw);
                     temperatureC = vt / 340f + 36.25f;
 
-                    Quaternion imuRotation = Quaternion.Euler(roll, pitch, yaw);
+                    Quaternion imuRotation =
+                        Quaternion.AngleAxis(roll,  -Vector3.forward) *
+                        Quaternion.AngleAxis(pitch, Vector3.right) *
+                        Quaternion.AngleAxis(yaw,   -Vector3.up);
+
                     if (!hasReferenceRotation)
                     {
                         referenceRotation = imuRotation;
@@ -211,8 +208,7 @@ public class DomeStabilizer : MonoBehaviour
                     }
 
                     imuRotation = imuRotation * Quaternion.Inverse(referenceRotation);
-                    Quaternion unityRotation = ConvertImuRotationToUnity(imuRotation);
-                    robotRotation = unityRotation;
+                    robotRotation = imuRotation;
                     break;
 
                 default:
@@ -220,20 +216,6 @@ public class DomeStabilizer : MonoBehaviour
                     break;
             }
         }
-    }
-    
-    private static Quaternion ConvertImuRotationToUnity(Quaternion imuRotation)
-    {
-        Matrix4x4 rImu = Matrix4x4.Rotate(imuRotation);
-
-        // S is orthogonal, so S^-1 = S^T even though det(S) = -1
-        Matrix4x4 s = axisMapMatrix;
-        Matrix4x4 rUnity = s * rImu * s.transpose;
-
-        Vector3 forward = rUnity.GetColumn(2);
-        Vector3 up = rUnity.GetColumn(1);
-
-        return Quaternion.LookRotation(forward, up);
     }
 
     private static short ToInt16LE(byte lo, byte hi)
