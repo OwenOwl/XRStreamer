@@ -6,7 +6,7 @@ from typing import Any
 
 import torch
 
-from .axis_utils import quat_unity_to_genesis, pos_unity_to_genesis
+from utils.axis_utils import quat_unity_to_genesis, pos_unity_to_genesis
 
 class XRClient:
     """
@@ -208,3 +208,15 @@ class XRClient:
         except ValueError:
             return default
         return x
+
+
+if __name__ == "__main__":
+    client = XRClient()
+    try:
+        while True:
+            frame = client.get_frame()
+            print(frame)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        client.shutdown()
