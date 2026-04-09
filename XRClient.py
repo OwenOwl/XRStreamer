@@ -6,6 +6,8 @@ from typing import Any
 
 import torch
 
+from .axis_utils import quat_unity_to_genesis, pos_unity_to_genesis
+
 class XRClient:
     """
     output format (by .get_frame() method):
@@ -143,7 +145,9 @@ class XRClient:
                 right_hand_pose[3:],
             ],
             dim=0,
-        ).roll(1, dims=-1)  # (w, x, y, z)
+        )
+        link_pos = pos_unity_to_genesis(link_pos)
+        link_quat = quat_unity_to_genesis(link_quat).roll(1, dims=-1)  # (w, x, y, z)
         
         # parse buttons
         left_stick = tuple(self._parse_float_block(parts, "LEFTSTICK", 2))
