@@ -6,7 +6,7 @@ from typing import Any
 
 import torch
 
-from utils.axis_utils import quat_unity_to_genesis, pos_unity_to_genesis
+from .utils.axis_utils import quat_unity_to_genesis, pos_unity_to_genesis
 
 class XRClient:
     """
