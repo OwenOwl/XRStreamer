@@ -136,6 +136,8 @@ public class XRPoseUdpStreamer : MonoBehaviour
         if (!okLeft)  { leftPos = Vector3.zero; leftQuat = Quaternion.identity; }
         if (!okRight) { rightPos = Vector3.zero; rightQuat = Quaternion.identity; }
 
+        if (!okHmd || !okLeft || !okRight) { return;}
+
         string msg = string.Format(
             CultureInfo.InvariantCulture,
             "FRAME,{0}," +

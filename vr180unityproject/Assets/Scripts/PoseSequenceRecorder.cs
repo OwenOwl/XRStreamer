@@ -38,11 +38,10 @@ public class PoseSequenceRecorder : MonoBehaviour
     public bool autoOpenImuOnStart = true;
 
     [Header("Debug UI")]
-    public bool showFloatingDebugText = true;
-    public Vector3 debugTextOffset = new Vector3(0f, 0.12f, 1.2f);
-    public int debugFontSize = 48;
+    public TextMesh[] debugTextMeshes;
     public Color idleColor = Color.white;
     public Color warningColor = Color.yellow;
+    public Color recordingColor = Color.red;
     public float popupDuration = 1.5f;
 
     [Header("IMU Debug")]
@@ -69,7 +68,6 @@ public class PoseSequenceRecorder : MonoBehaviour
     private bool prevRightTriggerPressed = false;
 
     // Debug UI
-    private TextMesh debugTextMesh;
     private string popupMessage = "";
     private float popupUntilTime = -1f;
 
@@ -91,9 +89,6 @@ public class PoseSequenceRecorder : MonoBehaviour
     private Thread readThread;
     private volatile bool serialRunning = false;
     private readonly object imuLock = new object();
-
-    private bool hasReferenceRotation = false;
-    private Quaternion referenceRotation = Quaternion.identity;
 
     void OnEnable()
     {
@@ -131,9 +126,6 @@ public class PoseSequenceRecorder : MonoBehaviour
 
         if (autoOpenImuOnStart)
             OpenImuPort();
-        
-        if (showFloatingDebugText)
-            CreateFloatingDebugText();
 
         Debug.Log($"[PoseSequenceRecorder] Save folder: {GetSaveDirectory()}");
     }
@@ -158,7 +150,7 @@ public class PoseSequenceRecorder : MonoBehaviour
         if (now > nextSampleTime + 0.5f)
             nextSampleTime = now + sampleInterval;
         
-        UpdateFloatingDebugText();
+        UpdateDebugText();
     }
 
     private void SampleOnce(float sampleTime)
@@ -187,6 +179,10 @@ public class PoseSequenceRecorder : MonoBehaviour
             rightPos = Vector3.zero;
             rightRot = Quaternion.identity;
         }
+
+        lastOkHmd = okHmd;
+        lastOkLeft = okLeft;
+        lastOkRight = okRight;
 
         float rightTrigger = TryGetAxis1D(rightController, CommonUsages.trigger);
         bool rightTriggerPressed = rightTrigger >= triggerThreshold;
@@ -250,10 +246,6 @@ public class PoseSequenceRecorder : MonoBehaviour
 
         recordedRows.Add(row);
         recordedFrames = recordedRows.Count;
-
-        lastOkHmd = okHmd;
-        lastOkLeft = okLeft;
-        lastOkRight = okRight;
     }
 
     private void StartRecording()
@@ -633,14 +625,6 @@ public class PoseSequenceRecorder : MonoBehaviour
         {
             imuEulerDeg = new Vector3(roll, pitch, yaw);
             imuTemperatureC = temp;
-
-            if (!hasReferenceRotation)
-            {
-                referenceRotation = qUnity;
-                hasReferenceRotation = true;
-            }
-
-            qUnity = qUnity * Quaternion.Inverse(referenceRotation);
             imuUnityRotation = NormalizeQuaternion(qUnity);
         }
     }
@@ -668,17 +652,7 @@ public class PoseSequenceRecorder : MonoBehaviour
         return new Quaternion(q.x * inv, q.y * inv, q.z * inv, q.w * inv);
     }
 
-    private void CreateFloatingDebugText()
-    {
-        GameObject go = new GameObject("FloatingDebugText");
-        debugTextMesh = go.AddComponent<TextMesh>();
-        debugTextMesh.text = "";
-        debugTextMesh.fontSize = debugFontSize;
-        debugTextMesh.characterSize = 0.01f;
-        debugTextMesh.anchor = TextAnchor.MiddleCenter;
-        debugTextMesh.alignment = TextAlignment.Center;
-        debugTextMesh.color = idleColor;
-    }
+    // ---------------- Debug UI ----------------
 
     private void ShowPopup(string msg)
     {
@@ -691,51 +665,41 @@ public class PoseSequenceRecorder : MonoBehaviour
         return ok ? "[OK]" : "[--]";
     }
 
-    private void UpdateFloatingDebugText()
+    private void UpdateDebugText()
     {
-        if (!showFloatingDebugText || debugTextMesh == null)
+        if (debugTextMeshes == null || debugTextMeshes.Length == 0)
             return;
+        
+        Vector3 imuEuler;
 
-        bool haveHmdPose = TryGetPose(hmd, out Vector3 hmdPos, out Quaternion hmdRot);
-        Vector3 pos;
-        Quaternion rot;
-
-        if (haveHmdPose)
+        lock (imuLock)
         {
-            pos = hmdPos + hmdRot * debugTextOffset;
-            rot = Quaternion.LookRotation(pos - hmdPos, Vector3.up);
+            imuEuler = imuEulerDeg;
         }
-        else
-        {
-            // fallback if HMD pose not available yet
-            Camera cam = Camera.main;
-            if (cam != null)
-            {
-                pos = cam.transform.position + cam.transform.rotation * debugTextOffset;
-                rot = Quaternion.LookRotation(pos - cam.transform.position, Vector3.up);
-            }
-            else
-            {
-                pos = transform.position + debugTextOffset;
-                rot = Quaternion.identity;
-            }
-        }
-
-        debugTextMesh.transform.position = pos;
-        debugTextMesh.transform.rotation = rot;
 
         string rec = isRecording ? "REC" : "IDLE";
-        string line1 = isRecording ? "REC" : "IDLE";
         string line2 = $"HMD {OkMark(lastOkHmd)}   L {OkMark(lastOkLeft)}   R {OkMark(lastOkRight)}";
+        string line3 = $"IMU {imuEuler.x:F2}, {imuEuler.y:F2}, {imuEuler.z:F2}";
 
         bool popupActive = GetNow() <= popupUntilTime;
-        string text = popupActive ? $"{rec}\n{line2}\n{popupMessage}" : $"{rec}\n{line2}";
+        string text = popupActive
+            ? $"{rec}\n{line2}\n{line3}\n{popupMessage}"
+            : $"{rec}\n{line2}\n{line3}";
 
-        debugTextMesh.text = text;
-
+        Color c;
         if (!lastOkHmd || !lastOkLeft || !lastOkRight)
-            debugTextMesh.color = warningColor;
+            c = warningColor;
+        else if (isRecording)
+            c = Color.red;
         else
-            debugTextMesh.color = idleColor;
+            c = idleColor;
+
+        foreach (var tm in debugTextMeshes)
+        {
+            if (tm == null) continue;
+
+            tm.text = text;
+            tm.color = c;
+        }
     }
 }
