@@ -182,13 +182,14 @@ public class PoseSequenceRecorder : MonoBehaviour
             rightRot = Quaternion.identity;
         }
 
-        lastOkHmd = okHmd;
-        lastOkLeft = okLeft;
-        lastOkRight = okRight;
-
         float rightTrigger = TryGetAxis1D(rightController, CommonUsages.trigger);
         float leftTrigger = TryGetAxis1D(leftController, CommonUsages.trigger);
         bool rightTriggerPressed = rightTrigger >= triggerThreshold;
+
+        lastOkHmd = okHmd;
+        lastOkLeft = okLeft;
+        lastOkRight = okRight;
+        lastLeftTrigger = leftTrigger;
 
         // Rising edge toggles recording
         if (rightTriggerPressed && !prevRightTriggerPressed)

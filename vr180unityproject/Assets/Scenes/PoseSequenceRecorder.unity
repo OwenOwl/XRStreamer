@@ -436,7 +436,7 @@ MonoBehaviour:
   triggerThreshold: 0.8
   saveSubfolder: PoseRecordings
   filePrefix: sequence
-  portName: COM3
+  portName: COM4
   baudRate: 115200
   autoOpenImuOnStart: 1
   debugTextMeshes:
