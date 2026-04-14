@@ -745,7 +745,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 350fc5e5803f99e42b55d2ea8739d205, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::XRPoseUdpStreamer
-  targetIp: 192.168.0.129
+  targetIp: 192.168.1.2
   targetPort: 5005
   enableBroadcast: 0
   targetHz: 120
