@@ -74,6 +74,7 @@ public class PoseSequenceRecorder : MonoBehaviour
     private bool lastOkHmd = false;
     private bool lastOkLeft = false;
     private bool lastOkRight = false;
+    private float lastLeftTrigger = 0f;
 
     // Recording buffer
     // Each row:
@@ -81,7 +82,8 @@ public class PoseSequenceRecorder : MonoBehaviour
     //  hmd_px,hmd_py,hmd_pz,hmd_qx,hmd_qy,hmd_qz,hmd_qw,
     //  left_px,left_py,left_pz,left_qx,left_qy,left_qz,left_qw,
     //  right_px,right_py,right_pz,right_qx,right_qy,right_qz,right_qw,
-    //  imu_qx,imu_qy,imu_qz,imu_qw]
+    //  imu_qx,imu_qy,imu_qz,imu_qw,
+    //  left_trigger]
     private readonly List<float[]> recordedRows = new List<float[]>(8192);
 
     // IMU serial thread
@@ -185,6 +187,7 @@ public class PoseSequenceRecorder : MonoBehaviour
         lastOkRight = okRight;
 
         float rightTrigger = TryGetAxis1D(rightController, CommonUsages.trigger);
+        float leftTrigger = TryGetAxis1D(leftController, CommonUsages.trigger);
         bool rightTriggerPressed = rightTrigger >= triggerThreshold;
 
         // Rising edge toggles recording
@@ -206,7 +209,7 @@ public class PoseSequenceRecorder : MonoBehaviour
             imuQ = imuUnityRotation;
         }
 
-        float[] row = new float[26];
+        float[] row = new float[27];
         int k = 0;
 
         row[k++] = sampleTime;
@@ -243,6 +246,9 @@ public class PoseSequenceRecorder : MonoBehaviour
         row[k++] = imuQ.y;
         row[k++] = imuQ.z;
         row[k++] = imuQ.w;
+
+        // Left trigger
+        row[k++] = leftTrigger;
 
         recordedRows.Add(row);
         recordedFrames = recordedRows.Count;
@@ -297,7 +303,8 @@ public class PoseSequenceRecorder : MonoBehaviour
             "hmd_px,hmd_py,hmd_pz,hmd_qx,hmd_qy,hmd_qz,hmd_qw," +
             "left_px,left_py,left_pz,left_qx,left_qy,left_qz,left_qw," +
             "right_px,right_py,right_pz,right_qx,right_qy,right_qz,right_qw," +
-            "imu_qx,imu_qy,imu_qz,imu_qw"
+            "imu_qx,imu_qy,imu_qz,imu_qw," +
+            "left_trigger"
         );
 
         foreach (float[] row in rows)
@@ -679,7 +686,7 @@ public class PoseSequenceRecorder : MonoBehaviour
 
         string rec = isRecording ? "REC" : "IDLE";
         string line2 = $"HMD {OkMark(lastOkHmd)}   L {OkMark(lastOkLeft)}   R {OkMark(lastOkRight)}";
-        string line3 = $"IMU {imuEuler.x:F2}, {imuEuler.y:F2}, {imuEuler.z:F2}";
+        string line3 = $"IMU {imuEuler.x:F2}, {imuEuler.y:F2}, {imuEuler.z:F2}    LT {lastLeftTrigger:F2}";
 
         bool popupActive = GetNow() <= popupUntilTime;
         string text = popupActive
