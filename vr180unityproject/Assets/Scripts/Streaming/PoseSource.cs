@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class PoseSource : MonoBehaviour
+public abstract class PoseSource : MonoBehaviour
 {
     [Header("Device Refresh")]
     public float refreshInterval = 1.0f;

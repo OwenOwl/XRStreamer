@@ -43,7 +43,7 @@ public class XRPoseSource : PoseSource
         okHmd = TryGetPose(hmd, out hmdPos, out hmdQuat);
         okLeft = TryGetPose(leftController, out leftPos, out leftQuat);
         okRight = TryGetPose(rightController, out rightPos, out rightQuat);
-        ok = okHmd || okLeft || okRight;
+        ok = okHmd && okLeft && okRight;
 
         leftStick = TryGetAxis2D(leftController, CommonUsages.primary2DAxis);
         rightStick = TryGetAxis2D(rightController, CommonUsages.primary2DAxis);
