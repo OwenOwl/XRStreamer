@@ -1,1 +1,0 @@
-python local_webrtc_sender.py --os windows --device "video=VR.Cam 02" --width 3840 --height 1920 --fps 30
