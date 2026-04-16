@@ -4796,7 +4796,7 @@ MonoBehaviour:
   - {fileID: 995099711}
   - {fileID: 1725958095}
   - {fileID: 882478929}
-  defaultPortName: COM6
+  defaultPortName: COM7
   defaultCameraName: OBS Virtual Camera
   defaultTargetIp: 192.168.1.2
 --- !u!1 &2072228876

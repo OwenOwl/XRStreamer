@@ -84,7 +84,7 @@ public class XRPoseSource : PoseSource
     private void OnDeviceConnected(InputDevice device)
     {
         if (verboseDeviceLogs)
-            Debug.Log($"[PoseSource] XR device connected: name={device.name}, role={device.role}, chars={device.characteristics}");
+            Debug.Log($"[PoseSource] XR device connected: name={device.name}, chars={device.characteristics}");
 
         RefreshDevices();
     }
@@ -92,7 +92,7 @@ public class XRPoseSource : PoseSource
     private void OnDeviceDisconnected(InputDevice device)
     {
         if (verboseDeviceLogs)
-            Debug.Log($"[PoseSource] XR device disconnected: name={device.name}, role={device.role}, chars={device.characteristics}");
+            Debug.Log($"[PoseSource] XR device disconnected: name={device.name}, chars={device.characteristics}");
 
         RefreshDevices();
     }
@@ -100,7 +100,7 @@ public class XRPoseSource : PoseSource
     private void OnDeviceConfigChanged(InputDevice device)
     {
         if (verboseDeviceLogs)
-            Debug.Log($"[PoseSource] XR device config changed: name={device.name}, role={device.role}, chars={device.characteristics}");
+            Debug.Log($"[PoseSource] XR device config changed: name={device.name}, chars={device.characteristics}");
 
         RefreshDevices();
     }
