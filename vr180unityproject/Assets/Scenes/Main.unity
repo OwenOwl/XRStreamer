@@ -3461,6 +3461,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DomeStabilizer
   portName: COM3
   baudRate: 115200
+  imuDelaySeconds: 0.15
   robotRotation: {x: 0, y: 0, z: 0, w: 1}
   accel_g: {x: 0, y: 0, z: 0}
   angleVel_deg_s: {x: 0, y: 0, z: 0}

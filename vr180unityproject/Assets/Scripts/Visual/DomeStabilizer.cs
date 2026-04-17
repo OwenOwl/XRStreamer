@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO.Ports;
 using System.Threading;
 using UnityEngine;
@@ -8,6 +9,9 @@ public class DomeStabilizer : MonoBehaviour
     [Header("Serial")]
     public string portName = "COM3";
     public int baudRate = 115200;
+
+    [Header("IMU Delay")]
+    public float imuDelaySeconds = 0.0f;
 
     [Header("Debug / Inspector")]
     public Quaternion robotRotation = Quaternion.identity;
@@ -26,6 +30,15 @@ public class DomeStabilizer : MonoBehaviour
 
     private bool hasReferenceRotation = false;
     private Quaternion referenceRotation = Quaternion.identity;
+
+    private readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
+
+    private struct TimestampedRotation
+    {
+        public double time;
+        public Quaternion rotation;
+    }
+    private readonly Queue<TimestampedRotation> rotationBuffer = new Queue<TimestampedRotation>();
 
     void OnEnable()
     {
@@ -47,6 +60,11 @@ public class DomeStabilizer : MonoBehaviour
         Quaternion q;
         lock (dataLock)
         {
+
+            double targetTime = clock.Elapsed.TotalSeconds - imuDelaySeconds;
+            while (rotationBuffer.Count > 1 && rotationBuffer.Peek().time <= targetTime)
+                robotRotation = rotationBuffer.Dequeue().rotation;
+
             q = robotRotation;
         }
 
@@ -71,6 +89,7 @@ public class DomeStabilizer : MonoBehaviour
             serialPort.ReadTimeout = 100;
             serialPort.Open();
 
+            clock.Restart();
             running = true;
             readThread = new Thread(ReadLoop);
             readThread.IsBackground = true;
@@ -207,11 +226,15 @@ public class DomeStabilizer : MonoBehaviour
                     }
 
                     imuRotation = imuRotation * Quaternion.Inverse(referenceRotation);
-                    robotRotation = imuRotation;
+
+                    rotationBuffer.Enqueue(new TimestampedRotation
+                    {
+                        time = clock.Elapsed.TotalSeconds,
+                        rotation = imuRotation
+                    });
                     break;
 
                 default:
-                    // ignore other packet types for now
                     break;
             }
         }
