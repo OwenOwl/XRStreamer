@@ -6,20 +6,18 @@ using System.IO.Ports;
 using System.Text;
 using System.Threading;
 using UnityEngine;
-using UnityEngine.XR;
 
 public class PoseSequenceRecorder : MonoBehaviour
 {
+    [Header("Pose Source")]
+    public PoseSource poseSource;
+
     [Header("Sampling")]
     [Tooltip("Fixed recording rate.")]
     public int targetHz = 120;
 
     [Tooltip("Use unscaled time so capture is independent of Time.timeScale.")]
     public bool useUnscaledTime = true;
-
-    [Header("XR Device Refresh")]
-    public float refreshInterval = 1.0f;
-    public bool verboseDeviceLogs = true;
 
     [Header("Record Trigger")]
     [Tooltip("Press right trigger past this threshold to toggle start/stop.")]
@@ -55,15 +53,9 @@ public class PoseSequenceRecorder : MonoBehaviour
 
     private bool recorderInitialized = false;
 
-    // XR
-    private InputDevice hmd;
-    private InputDevice leftController;
-    private InputDevice rightController;
-
     // Fixed-rate timing
     private float sampleInterval;
     private float nextSampleTime;
-    private float nextRefreshTime;
 
     // Trigger edge detect
     private bool prevRightTriggerPressed = false;
@@ -71,11 +63,6 @@ public class PoseSequenceRecorder : MonoBehaviour
     // Debug UI
     private string popupMessage = "";
     private float popupUntilTime = -1f;
-
-    private bool lastOkHmd = false;
-    private bool lastOkLeft = false;
-    private bool lastOkRight = false;
-    private float lastLeftTrigger = 0f;
 
     // Recording buffer
     // Each row:
@@ -92,20 +79,13 @@ public class PoseSequenceRecorder : MonoBehaviour
     private Thread readThread;
     private volatile bool serialRunning = false;
     private readonly object imuLock = new object();
-
     void OnEnable()
     {
-        InputDevices.deviceConnected += OnDeviceConnected;
-        InputDevices.deviceDisconnected += OnDeviceDisconnected;
-        InputDevices.deviceConfigChanged += OnDeviceConfigChanged;
+        
     }
 
     void OnDisable()
     {
-        InputDevices.deviceConnected -= OnDeviceConnected;
-        InputDevices.deviceDisconnected -= OnDeviceDisconnected;
-        InputDevices.deviceConfigChanged -= OnDeviceConfigChanged;
-
         CloseImuPort();
     }
 
@@ -119,11 +99,15 @@ public class PoseSequenceRecorder : MonoBehaviour
         if (recorderInitialized)
             return;
 
+        if (poseSource == null)
+        {
+            Debug.LogError("[PoseSequenceRecorder] poseSource is not assigned.");
+            return;
+        }
+
         sampleInterval = 1.0f / Mathf.Max(1, targetHz);
         nextSampleTime = GetNow();
-        nextRefreshTime = GetNow();
 
-        RefreshDevices();
         OpenImuPort();
 
         Debug.Log($"[PoseSequenceRecorder] Save folder: {GetSaveDirectory()}");
@@ -133,16 +117,10 @@ public class PoseSequenceRecorder : MonoBehaviour
 
     void Update()
     {
-        if (!recorderInitialized)
+        if (!recorderInitialized || poseSource == null)
             return;
         
         float now = GetNow();
-
-        if (now >= nextRefreshTime)
-        {
-            nextRefreshTime = now + Mathf.Max(0.1f, refreshInterval);
-            RefreshDevices();
-        }
 
         while (now >= nextSampleTime)
         {
@@ -159,39 +137,20 @@ public class PoseSequenceRecorder : MonoBehaviour
 
     private void SampleOnce(float sampleTime)
     {
-        if (!IsDeviceUsable(hmd) || !IsDeviceUsable(leftController) || !IsDeviceUsable(rightController))
-            RefreshDevices();
+        bool okHmd   = poseSource.okHmd;
+        bool okLeft  = poseSource.okLeft;
+        bool okRight = poseSource.okRight;
 
-        bool okHmd = TryGetPose(hmd, out Vector3 hmdPos, out Quaternion hmdRot);
-        bool okLeft = TryGetPose(leftController, out Vector3 leftPos, out Quaternion leftRot);
-        bool okRight = TryGetPose(rightController, out Vector3 rightPos, out Quaternion rightRot);
+        Vector3    hmdPos   = poseSource.hmdPos;
+        Quaternion hmdRot   = poseSource.hmdQuat;
+        Vector3    leftPos  = poseSource.leftPos;
+        Quaternion leftRot  = poseSource.leftQuat;
+        Vector3    rightPos = poseSource.rightPos;
+        Quaternion rightRot = poseSource.rightQuat;
 
-        if (!okHmd)
-        {
-            hmdPos = Vector3.zero;
-            hmdRot = Quaternion.identity;
-        }
-
-        if (!okLeft)
-        {
-            leftPos = Vector3.zero;
-            leftRot = Quaternion.identity;
-        }
-
-        if (!okRight)
-        {
-            rightPos = Vector3.zero;
-            rightRot = Quaternion.identity;
-        }
-
-        float rightTrigger = TryGetAxis1D(rightController, CommonUsages.trigger);
-        float leftTrigger = TryGetAxis1D(leftController, CommonUsages.trigger);
+        float rightTrigger = poseSource.rightTrigger;
+        float leftTrigger  = poseSource.leftTrigger;
         bool rightTriggerPressed = rightTrigger >= triggerThreshold;
-
-        lastOkHmd = okHmd;
-        lastOkLeft = okLeft;
-        lastOkRight = okRight;
-        lastLeftTrigger = leftTrigger;
 
         // Rising edge toggles recording
         if (rightTriggerPressed && !prevRightTriggerPressed)
@@ -390,127 +349,9 @@ public class PoseSequenceRecorder : MonoBehaviour
         return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
-    // ---------------- XR ----------------
-
-    private void OnDeviceConnected(InputDevice device)
-    {
-        if (verboseDeviceLogs)
-            Debug.Log($"[PoseSequenceRecorder] XR connected: name={device.name}, role={device.role}, chars={device.characteristics}");
-
-        RefreshDevices();
-    }
-
-    private void OnDeviceDisconnected(InputDevice device)
-    {
-        if (verboseDeviceLogs)
-            Debug.Log($"[PoseSequenceRecorder] XR disconnected: name={device.name}, role={device.role}, chars={device.characteristics}");
-
-        RefreshDevices();
-    }
-
-    private void OnDeviceConfigChanged(InputDevice device)
-    {
-        if (verboseDeviceLogs)
-            Debug.Log($"[PoseSequenceRecorder] XR config changed: name={device.name}, role={device.role}, chars={device.characteristics}");
-
-        RefreshDevices();
-    }
-
     private float GetNow()
     {
         return useUnscaledTime ? Time.unscaledTime : Time.time;
-    }
-
-    private void RefreshDevices()
-    {
-        hmd = FindHeadDevice();
-        leftController = FindLeftController();
-        rightController = FindRightController();
-    }
-
-    private bool IsDeviceUsable(InputDevice device)
-    {
-        return device.isValid;
-    }
-
-    private InputDevice FindHeadDevice()
-    {
-        var devices = new List<InputDevice>();
-
-        InputDevices.GetDevicesWithCharacteristics(
-            InputDeviceCharacteristics.HeadMounted | InputDeviceCharacteristics.TrackedDevice,
-            devices
-        );
-
-        if (devices.Count > 0)
-            return devices[0];
-
-        return InputDevices.GetDeviceAtXRNode(XRNode.Head);
-    }
-
-    private InputDevice FindLeftController()
-    {
-        var devices = new List<InputDevice>();
-
-        InputDevices.GetDevicesWithCharacteristics(
-            InputDeviceCharacteristics.Left |
-            InputDeviceCharacteristics.Controller |
-            InputDeviceCharacteristics.HeldInHand |
-            InputDeviceCharacteristics.TrackedDevice,
-            devices
-        );
-
-        if (devices.Count > 0)
-            return devices[0];
-
-        return InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
-    }
-
-    private InputDevice FindRightController()
-    {
-        var devices = new List<InputDevice>();
-
-        InputDevices.GetDevicesWithCharacteristics(
-            InputDeviceCharacteristics.Right |
-            InputDeviceCharacteristics.Controller |
-            InputDeviceCharacteristics.HeldInHand |
-            InputDeviceCharacteristics.TrackedDevice,
-            devices
-        );
-
-        if (devices.Count > 0)
-            return devices[0];
-
-        return InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
-    }
-
-    private bool TryGetPose(InputDevice device, out Vector3 pos, out Quaternion rot)
-    {
-        pos = Vector3.zero;
-        rot = Quaternion.identity;
-
-        if (!device.isValid)
-            return false;
-
-        bool trackedOk = true;
-        if (device.TryGetFeatureValue(CommonUsages.isTracked, out bool isTracked))
-            trackedOk = isTracked;
-
-        bool posOk = device.TryGetFeatureValue(CommonUsages.devicePosition, out pos);
-        bool rotOk = device.TryGetFeatureValue(CommonUsages.deviceRotation, out rot);
-
-        return trackedOk && posOk && rotOk;
-    }
-
-    private float TryGetAxis1D(InputDevice device, InputFeatureUsage<float> usage)
-    {
-        if (!device.isValid)
-            return 0f;
-
-        if (device.TryGetFeatureValue(usage, out float value))
-            return Mathf.Clamp01(value);
-
-        return 0f;
     }
 
     // ---------------- IMU ----------------
@@ -687,9 +528,14 @@ public class PoseSequenceRecorder : MonoBehaviour
             imuEuler = imuEulerDeg;
         }
 
+        bool okHmd   = poseSource != null && poseSource.okHmd;
+        bool okLeft  = poseSource != null && poseSource.okLeft;
+        bool okRight = poseSource != null && poseSource.okRight;
+        float leftTrigger = poseSource != null ? poseSource.leftTrigger : 0f;
+
         string rec = isRecording ? "REC" : "IDLE";
-        string line2 = $"HMD {OkMark(lastOkHmd)}   L {OkMark(lastOkLeft)}   R {OkMark(lastOkRight)}";
-        string line3 = $"IMU {imuEuler.x:F2}, {imuEuler.y:F2}, {imuEuler.z:F2}    LT {lastLeftTrigger:F2}";
+        string line2 = $"HMD {OkMark(okHmd)}   L {OkMark(okLeft)}   R {OkMark(okRight)}";
+        string line3 = $"IMU {imuEuler.x:F2}, {imuEuler.y:F2}, {imuEuler.z:F2}    LT {leftTrigger:F2}";
 
         bool popupActive = GetNow() <= popupUntilTime;
         string text = popupActive
@@ -697,7 +543,7 @@ public class PoseSequenceRecorder : MonoBehaviour
             : $"{rec}\n{line2}\n{line3}";
 
         Color c;
-        if (!lastOkHmd || !lastOkLeft || !lastOkRight)
+        if (!okHmd || !okLeft || !okRight)
             c = warningColor;
         else if (isRecording)
             c = Color.red;
