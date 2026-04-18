@@ -1,6 +1,14 @@
 # XRStreamer
 
-XRStreamer 用于把 Unity（Meta Quest + Link）中的头显和手柄姿态与按键状态，通过 UDP 实时发送到 Python 侧。
+XRStreamer 用于把支持 OpenXR 的头显和手柄姿态与按键状态，通过 UDP 实时发送到 Python 侧。
+
+> _项目也支持通过双目鱼眼相机 + IMU 稳定器进行实时观察，以及组合 IMU 的数据进行录制等（个人使用）。_
+
+如果您已获取到对应的可执行文件，可以只抓取 receiver 分支：
+
+```
+git clone -b receiver --single-branch <repo-url>
+```
 
 ## 接收端
 
