@@ -39,6 +39,7 @@ class XRClient:
         self.device = torch.device(device)
 
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._sock.settimeout(1.0)
         self._sock.bind((udp_host, udp_port))
 
         self._lock = threading.Lock()
@@ -72,6 +73,8 @@ class XRClient:
         while not self._stop.is_set():
             try:
                 data, _ = self._sock.recvfrom(8192)  # blocking recv
+            except TimeoutError:
+                continue
             except OSError:
                 break
 
