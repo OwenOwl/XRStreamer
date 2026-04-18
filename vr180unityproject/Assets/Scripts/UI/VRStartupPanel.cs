@@ -12,7 +12,6 @@ public class VRStartupPanel : MonoBehaviour
     public TMP_InputField targetIpInput;
 
     public Button startStreamingButtonXR;
-    public Button startStreamingButtonPico;
 
     [Header("UI - Right")]
     public Button startRecordingButton;
@@ -43,9 +42,6 @@ public class VRStartupPanel : MonoBehaviour
 
         if (startStreamingButtonXR != null)
             startStreamingButtonXR.onClick.AddListener(OnClickStartStreamingXR);
-
-        if (startStreamingButtonPico != null)
-            startStreamingButtonPico.onClick.AddListener(OnClickStartStreamingPico);
 
         if (startRecordingButton != null)
             startRecordingButton.onClick.AddListener(OnClickStartRecording);
@@ -162,7 +158,7 @@ public class VRStartupPanel : MonoBehaviour
                 selectedPoseSource.enabled = true;
         }
 
-        if (poseUdpSender != null)
+        if (poseUdpSender != null && selectedPoseSource != null)
         {
             poseUdpSender.targetIp = targetIp;
             poseUdpSender.poseSource = selectedPoseSource;
@@ -174,11 +170,6 @@ public class VRStartupPanel : MonoBehaviour
     public void OnClickStartStreamingXR()
     {
         OnClickStartStreaming(0);
-    }
-
-    public void OnClickStartStreamingPico()
-    {
-        OnClickStartStreaming(1);
     }
 
     public void OnClickStartRecording()
