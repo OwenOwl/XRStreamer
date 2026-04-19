@@ -1,16 +1,14 @@
-Shader "Unlit/FisheyeSBS_VR180_ProjModes"
+Shader "Unlit/FisheyeSBS_VR180"
 {
     Properties
     {
         _MainTex ("SBS Video", 2D) = "black" {}
         _FovDeg ("Fisheye FOV", Range(120, 220)) = 160
+        _SinHalfThetaMax ("[!] Sin(Fov/4)", Float) = 0.6427876096865
         _Radius ("Circle Radius", Range(0.3, 0.7)) = 0.52
         _CenterX ("Circle Center X", Range(0.0, 1.0)) = 0.50
         _CenterY ("Circle Center Y", Range(0.0, 1.0)) = 0.50
         _FlipY ("Flip Y", Float) = 1
-
-        // 0=Equidistant, 1=Equisolid, 2=Stereographic, 3=Orthographic
-        _ProjMode ("Projection Mode", Range(0, 3)) = 1
     }
 
     SubShader
@@ -32,11 +30,11 @@ Shader "Unlit/FisheyeSBS_VR180_ProjModes"
 
             sampler2D _MainTex;
             float _FovDeg;
+            float _SinHalfThetaMax; // precomputed on CPU: sin(radians(_FovDeg) * 0.5)
             float _Radius;
             float _CenterX;
             float _CenterY;
             float _FlipY;
-            float _ProjMode;
 
             struct appdata
             {
@@ -58,50 +56,24 @@ Shader "Unlit/FisheyeSBS_VR180_ProjModes"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
                 o.pos = UnityObjectToClipPos(v.vertex);
-                o.dir = normalize(v.vertex.xyz);
+                o.dir = v.vertex.xyz; // normalized once in frag after interpolation
                 return o;
             }
 
-            bool IsInsideHalfUV(float2 uvHalf)
-            {
-                return uvHalf.x >= 0.0 && uvHalf.x <= 1.0 &&
-                       uvHalf.y >= 0.0 && uvHalf.y <= 1.0;
-            }
-
-            float ModelRadius(float theta, float mode)
-            {
-                // Unnormalized fisheye radius law
-                if (mode < 0.5)           return theta;                   // equidistant
-                else if (mode < 1.5)      return 2.0 * sin(0.5 * theta);  // equisolid
-                else if (mode < 2.5)      return 2.0 * tan(0.5 * theta);  // stereographic
-                else                      return sin(theta);              // orthographic
-            }
-
+            // d must already be normalized and d.z > 0 checked by caller
             float2 DirToFisheyeUV(float3 d)
             {
-                d = normalize(d);
-
-                // VR180 front hemisphere only
-                if (d.z <= 0.0)
-                    return float2(-1.0, -1.0);
-
-                float theta = acos(saturate(d.z));
+                float theta = acos(min(d.z, 1.0));
                 float phi = atan2(d.y, d.x);
 
-                float fovRad = radians(_FovDeg);
-                float thetaMax = 0.5 * fovRad;
+                // Equisolid projection: r = 2*sin(theta/2)
+                float r = (sin(0.5 * theta) / max(_SinHalfThetaMax, 1e-6)) * _Radius;
 
-                // Normalize radius using the chosen model at thetaMax
-                float rRaw = ModelRadius(theta, _ProjMode);
-                float rMax = max(ModelRadius(thetaMax, _ProjMode), 1e-6);
+                float sinPhi, cosPhi;
+                sincos(phi, sinPhi, cosPhi);
 
-                float rNorm = rRaw / rMax;
-                float r = rNorm * _Radius;
-
-                float2 uv;
-                uv.x = _CenterX + r * cos(phi);
-                uv.y = _CenterY + r * sin(phi) * _FlipY;
-                return uv;
+                return float2(_CenterX + r * cosPhi,
+                              _CenterY + r * sinPhi * _FlipY);
             }
 
             fixed4 frag(v2f i) : SV_Target
@@ -109,17 +81,20 @@ Shader "Unlit/FisheyeSBS_VR180_ProjModes"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
                 float3 d = normalize(i.dir);
+
+                // VR180 front hemisphere only
+                if (d.z <= 0.0)
+                    return fixed4(0, 0, 0, 1);
+
                 float2 uvHalf = DirToFisheyeUV(d);
 
-                if (!IsInsideHalfUV(uvHalf))
-                    return fixed4(0,0,0,1);
+                // Reject samples outside the fisheye circle (e.g. theta > thetaMax)
+                if (!all(uvHalf == saturate(uvHalf)))
+                    return fixed4(0, 0, 0, 1);
 
-                float eye = unity_StereoEyeIndex;
-                float2 uv;
-                uv.x = (uvHalf.x + eye) * 0.5;
-                uv.y = uvHalf.y;
+                float2 uv = float2((uvHalf.x + (float)unity_StereoEyeIndex) * 0.5, uvHalf.y);
 
-                return tex2D(_MainTex, saturate(uv));
+                return tex2D(_MainTex, uv);
             }
             ENDHLSL
         }
