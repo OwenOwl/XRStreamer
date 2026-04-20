@@ -214,9 +214,9 @@ public class DomeStabilizer : MonoBehaviour
                     temperatureC = vt / 340f + 36.25f;
 
                     Quaternion imuRotation =
-                        Quaternion.AngleAxis(roll,  -Vector3.forward) *
+                        Quaternion.AngleAxis(yaw,   -Vector3.up) *
                         Quaternion.AngleAxis(pitch, Vector3.right) *
-                        Quaternion.AngleAxis(yaw,   -Vector3.up);
+                        Quaternion.AngleAxis(roll,  -Vector3.forward);
 
                     if (!hasReferenceRotation)
                     {
@@ -225,7 +225,7 @@ public class DomeStabilizer : MonoBehaviour
                         hasReferenceRotation = true;
                     }
 
-                    imuRotation = imuRotation * Quaternion.Inverse(referenceRotation);
+                    imuRotation = Quaternion.Inverse(referenceRotation) * imuRotation;
 
                     rotationBuffer.Enqueue(new TimestampedRotation
                     {
