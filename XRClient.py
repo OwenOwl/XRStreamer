@@ -110,6 +110,7 @@ class XRClient:
                 - RIGHTA
                 - RIGHTB
                 - RIGHTCLICK
+            BODYIMU:        float (4),
         """
         parts = msg.split(",")
         
