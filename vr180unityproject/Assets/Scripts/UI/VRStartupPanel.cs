@@ -7,7 +7,10 @@ public class VRStartupPanel : MonoBehaviour
     [Header("UI - Left")]
     public Toggle domeToggle;
     public TMP_InputField cameraInput;
-    public TMP_InputField portInput;
+    public TMP_InputField cameraImuPortInput;
+
+    public Toggle bodyImuToggle;
+    public TMP_InputField bodyImuPortInput;
 
     public TMP_InputField targetIpInput;
 
@@ -16,11 +19,14 @@ public class VRStartupPanel : MonoBehaviour
     [Header("UI - Right")]
     public Button startRecordingButton;
 
+    [Header("Sources")]
+    public IMUSource[] imuSources;
+    public PoseSource[] poseSources;
+
     [Header("Targets")]
     public DomeStabilizer domeStabilizer;
     public OBSReceiver obsReceiver;
     public PoseUdpSender poseUdpSender;
-    public PoseSource[] poseSources;
     public PoseSequenceRecorder poseSequenceRecorder;
 
     [Header("Remove Visuals")]
@@ -29,7 +35,8 @@ public class VRStartupPanel : MonoBehaviour
     public GameObject[] XRVisuals;
 
     [Header("Default Text Values")]
-    public string defaultPortName = "COM3";
+    public string defaultCameraImuPortName = "COM7";
+    public string defaultBodyImuPortName = "COM3";
     public string defaultCameraName = "OBS Virtual Camera";
     public string defaultTargetIp = "255.255.255.255";
 
@@ -45,15 +52,6 @@ public class VRStartupPanel : MonoBehaviour
 
         if (startRecordingButton != null)
             startRecordingButton.onClick.AddListener(OnClickStartRecording);
-
-        if (domeStabilizer != null)
-            domeStabilizer.enabled = false;
-
-        if (obsReceiver != null)
-            obsReceiver.enabled = false;
-
-        if (poseUdpSender != null)
-            poseUdpSender.enabled = false;
         
         if (poseSources != null)
         {
@@ -63,6 +61,24 @@ public class VRStartupPanel : MonoBehaviour
                     source.enabled = false;
             }
         }
+
+        if (imuSources != null)
+        {
+            foreach (var source in imuSources)
+            {
+                if (source != null)
+                    source.enabled = false;
+            }
+        }
+
+        if (domeStabilizer != null)
+            domeStabilizer.enabled = false;
+
+        if (obsReceiver != null)
+            obsReceiver.enabled = false;
+
+        if (poseUdpSender != null)
+            poseUdpSender.enabled = false;
 
         if (poseSequenceRecorder != null)
             poseSequenceRecorder.enabled = false;
@@ -76,22 +92,33 @@ public class VRStartupPanel : MonoBehaviour
 
     private void InitInputDefaults()
     {
-        if (portInput != null && string.IsNullOrWhiteSpace(portInput.text))
-            portInput.text = defaultPortName;
-
         if (cameraInput != null && string.IsNullOrWhiteSpace(cameraInput.text))
             cameraInput.text = defaultCameraName;
 
         if (targetIpInput != null && string.IsNullOrWhiteSpace(targetIpInput.text))
             targetIpInput.text = defaultTargetIp;
+
+        if (cameraImuPortInput != null && string.IsNullOrWhiteSpace(cameraImuPortInput.text))
+            cameraImuPortInput.text = defaultCameraImuPortName;
+
+        if (bodyImuPortInput != null && string.IsNullOrWhiteSpace(bodyImuPortInput.text))
+            bodyImuPortInput.text = defaultBodyImuPortName;
     }
 
-    private string GetPortName()
+    private string GetCameraImuPortName()
     {
-        if (portInput == null || string.IsNullOrWhiteSpace(portInput.text))
-            return defaultPortName;
+        if (cameraImuPortInput == null || string.IsNullOrWhiteSpace(cameraImuPortInput.text))
+            return defaultCameraImuPortName;
 
-        return portInput.text.Trim();
+        return cameraImuPortInput.text.Trim();
+    }
+
+    private string GetBodyImuPortName()
+    {
+        if (bodyImuPortInput == null || string.IsNullOrWhiteSpace(bodyImuPortInput.text))
+            return defaultBodyImuPortName;
+
+        return bodyImuPortInput.text.Trim();
     }
 
     private string GetCameraName()
@@ -132,20 +159,17 @@ public class VRStartupPanel : MonoBehaviour
         if (StreamerRoot != null)
             StreamerRoot.SetActive(true);
 
-        string selectedPort = GetPortName();
-        string selectedCamera = GetCameraName();
-        string targetIp = GetTargetIp();
-
         if (domeToggle != null && domeToggle.isOn && domeStabilizer != null)
         {
-            domeStabilizer.portName = selectedPort;
+            domeStabilizer.imuSource.portName = GetCameraImuPortName();
+            domeStabilizer.imuSource.enabled = true;
+            domeStabilizer.imuSource.OpenPort();
             domeStabilizer.enabled = true;
-            domeStabilizer.OpenPort();
         }
 
         if (domeToggle != null && domeToggle.isOn && obsReceiver != null)
         {
-            obsReceiver.cameraName = selectedCamera;
+            obsReceiver.cameraName = GetCameraName();
             obsReceiver.enabled = true;
             obsReceiver.StartReceiver();
         }
@@ -160,7 +184,7 @@ public class VRStartupPanel : MonoBehaviour
 
         if (poseUdpSender != null && selectedPoseSource != null)
         {
-            poseUdpSender.targetIp = targetIp;
+            poseUdpSender.targetIp = GetTargetIp();
             poseUdpSender.poseSource = selectedPoseSource;
             poseUdpSender.enabled = true;
             poseUdpSender.BeginStreaming();
@@ -182,22 +206,25 @@ public class VRStartupPanel : MonoBehaviour
         if (recorderRoot != null)
             recorderRoot.SetActive(true);
 
-        if (poseSequenceRecorder != null)
+        PoseSource selectedPoseSource = null;
+        if (poseSources != null)
         {
-            poseSequenceRecorder.enabled = true;
-            poseSequenceRecorder.portName = GetPortName();
-            poseSequenceRecorder.InitializeRecorder();
+            selectedPoseSource = poseSources[0];
+            if (selectedPoseSource != null)
+                selectedPoseSource.enabled = true;
         }
 
-        gameObject.SetActive(false);
-
-        if (XRVisuals != null)
+        if (poseSequenceRecorder != null)
         {
-            foreach (var visual in XRVisuals)
+            poseSequenceRecorder.poseSource = selectedPoseSource;
+            if (bodyImuToggle != null && bodyImuToggle.isOn)
             {
-                if (visual != null)
-                    visual.SetActive(false);
+                poseSequenceRecorder.imuSource.portName = GetBodyImuPortName();
+                poseSequenceRecorder.imuSource.enabled = true;
+                poseSequenceRecorder.imuSource.OpenPort();
             }
+            poseSequenceRecorder.enabled = true;
+            poseSequenceRecorder.InitializeRecorder();
         }
     }
 }

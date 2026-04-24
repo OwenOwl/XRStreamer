@@ -30,9 +30,8 @@ public class PoseSequenceRecorder : MonoBehaviour
 
     public string filePrefix = "sequence";
 
-    [Header("IMU Serial")]
-    public string portName = "COM3";
-    public int baudRate = 115200;
+    [Header("IMU")]
+    public IMUSource imuSource;
 
     [Header("Debug UI")]
     public TextMesh[] debugTextMeshes;
@@ -40,11 +39,6 @@ public class PoseSequenceRecorder : MonoBehaviour
     public Color warningColor = Color.yellow;
     public Color recordingColor = Color.red;
     public float popupDuration = 1.5f;
-
-    [Header("IMU Debug")]
-    public Vector3 imuEulerDeg;
-    public Quaternion imuUnityRotation = Quaternion.identity;
-    public float imuTemperatureC;
 
     [Header("Status Debug")]
     public bool isRecording = false;
@@ -74,11 +68,6 @@ public class PoseSequenceRecorder : MonoBehaviour
     //  left_trigger]
     private readonly List<float[]> recordedRows = new List<float[]>(8192);
 
-    // IMU serial thread
-    private SerialPort serialPort;
-    private Thread readThread;
-    private volatile bool serialRunning = false;
-    private readonly object imuLock = new object();
     void OnEnable()
     {
         
@@ -86,7 +75,7 @@ public class PoseSequenceRecorder : MonoBehaviour
 
     void OnDisable()
     {
-        CloseImuPort();
+        
     }
 
     void Start()
@@ -107,8 +96,6 @@ public class PoseSequenceRecorder : MonoBehaviour
 
         sampleInterval = 1.0f / Mathf.Max(1, targetHz);
         nextSampleTime = GetNow();
-
-        OpenImuPort();
 
         Debug.Log($"[PoseSequenceRecorder] Save folder: {GetSaveDirectory()}");
 
@@ -165,12 +152,8 @@ public class PoseSequenceRecorder : MonoBehaviour
         if (!isRecording)
             return;
 
-        Quaternion imuQ;
-        lock (imuLock)
-        {
-            imuQ = imuUnityRotation;
-        }
-
+        Quaternion imuQ = imuSource.GetImuRotation();
+        
         float[] row = new float[27];
         int k = 0;
 
@@ -354,155 +337,6 @@ public class PoseSequenceRecorder : MonoBehaviour
         return useUnscaledTime ? Time.unscaledTime : Time.time;
     }
 
-    // ---------------- IMU ----------------
-
-    public void OpenImuPort()
-    {
-        if (serialRunning)
-            return;
-
-        try
-        {
-            serialPort = new SerialPort(portName, baudRate, Parity.None, 8, StopBits.One);
-            serialPort.ReadTimeout = 100;
-            serialPort.Open();
-
-            serialRunning = true;
-            readThread = new Thread(ReadImuLoop);
-            readThread.IsBackground = true;
-            readThread.Start();
-
-            Debug.Log($"[PoseSequenceRecorder] IMU serial opened: {portName} @ {baudRate}");
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[PoseSequenceRecorder] Failed to open IMU serial port {portName}: {e}");
-        }
-    }
-
-    public void CloseImuPort()
-    {
-        serialRunning = false;
-
-        try
-        {
-            if (readThread != null && readThread.IsAlive)
-                readThread.Join(500);
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[PoseSequenceRecorder] IMU thread join warning: {e}");
-        }
-
-        try
-        {
-            if (serialPort != null && serialPort.IsOpen)
-                serialPort.Close();
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[PoseSequenceRecorder] IMU port close warning: {e}");
-        }
-
-        readThread = null;
-        serialPort = null;
-    }
-
-    private void ReadImuLoop()
-    {
-        byte[] frame = new byte[11];
-
-        while (serialRunning && serialPort != null && serialPort.IsOpen)
-        {
-            try
-            {
-                int b = serialPort.ReadByte();
-                if (b < 0)
-                    continue;
-
-                if ((byte)b != 0x55)
-                    continue;
-
-                frame[0] = 0x55;
-
-                int got = 1;
-                while (got < 11)
-                {
-                    int n = serialPort.Read(frame, got, 11 - got);
-                    if (n > 0) got += n;
-                }
-
-                if (!CheckSum(frame))
-                    continue;
-
-                ParseImuFrame(frame);
-            }
-            catch (TimeoutException)
-            {
-                // normal
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[PoseSequenceRecorder] IMU serial warning: {e.Message}");
-                Thread.Sleep(10);
-            }
-        }
-    }
-
-    private void ParseImuFrame(byte[] f)
-    {
-        byte type = f[1];
-
-        short v1 = ToInt16LE(f[2], f[3]);
-        short v2 = ToInt16LE(f[4], f[5]);
-        short v3 = ToInt16LE(f[6], f[7]);
-        short vt = ToInt16LE(f[8], f[9]);
-
-        if (type != 0x53)
-            return;
-
-        float roll = v1 / 32768f * 180f;
-        float pitch = v2 / 32768f * 180f;
-        float yaw = v3 / 32768f * 180f;
-        float temp = vt / 340f + 36.25f;
-
-        // Same Unity-axis conversion style as your DomeStabilizer
-        Quaternion qUnity =
-            Quaternion.AngleAxis(roll, -Vector3.forward) *
-            Quaternion.AngleAxis(pitch, Vector3.right) *
-            Quaternion.AngleAxis(yaw, -Vector3.up);
-
-        lock (imuLock)
-        {
-            imuEulerDeg = new Vector3(roll, pitch, yaw);
-            imuTemperatureC = temp;
-            imuUnityRotation = NormalizeQuaternion(qUnity);
-        }
-    }
-
-    private static short ToInt16LE(byte lo, byte hi)
-    {
-        return (short)((hi << 8) | lo);
-    }
-
-    private static bool CheckSum(byte[] f)
-    {
-        int sum = 0;
-        for (int i = 0; i < 10; i++)
-            sum += f[i];
-        return (byte)(sum & 0xFF) == f[10];
-    }
-
-    private static Quaternion NormalizeQuaternion(Quaternion q)
-    {
-        float n = Mathf.Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
-        if (n < 1e-12f)
-            return Quaternion.identity;
-
-        float inv = 1f / n;
-        return new Quaternion(q.x * inv, q.y * inv, q.z * inv, q.w * inv);
-    }
-
     // ---------------- Debug UI ----------------
 
     private void ShowPopup(string msg)
@@ -523,10 +357,7 @@ public class PoseSequenceRecorder : MonoBehaviour
         
         Vector3 imuEuler;
 
-        lock (imuLock)
-        {
-            imuEuler = imuEulerDeg;
-        }
+        imuEuler = imuSource.GetEulerDeg();
 
         bool okHmd   = poseSource != null && poseSource.okHmd;
         bool okLeft  = poseSource != null && poseSource.okLeft;
