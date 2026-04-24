@@ -189,6 +189,13 @@ public class VRStartupPanel : MonoBehaviour
             poseUdpSender.enabled = true;
             poseUdpSender.BeginStreaming();
         }
+
+        if (poseSequenceRecorder != null && bodyImuToggle != null && bodyImuToggle.isOn)
+        {
+            poseUdpSender.imuSource.portName = GetBodyImuPortName();
+            poseUdpSender.imuSource.enabled = true;
+            poseUdpSender.imuSource.OpenPort();
+        }
     }
 
     public void OnClickStartStreamingXR()
@@ -217,14 +224,15 @@ public class VRStartupPanel : MonoBehaviour
         if (poseSequenceRecorder != null)
         {
             poseSequenceRecorder.poseSource = selectedPoseSource;
-            if (bodyImuToggle != null && bodyImuToggle.isOn)
-            {
-                poseSequenceRecorder.imuSource.portName = GetBodyImuPortName();
-                poseSequenceRecorder.imuSource.enabled = true;
-                poseSequenceRecorder.imuSource.OpenPort();
-            }
             poseSequenceRecorder.enabled = true;
             poseSequenceRecorder.InitializeRecorder();
+        }
+
+        if (poseSequenceRecorder != null && bodyImuToggle != null && bodyImuToggle.isOn)
+        {
+            poseSequenceRecorder.imuSource.portName = GetBodyImuPortName();
+            poseSequenceRecorder.imuSource.enabled = true;
+            poseSequenceRecorder.imuSource.OpenPort();
         }
     }
 }

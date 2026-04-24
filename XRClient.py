@@ -13,8 +13,8 @@ class XRClient:
     output format (by .get_frame() method):
         frame_id:       int
         recv_time:      float
-        link_pos:       torch.tensor (N*3) [HMD, L, R]
-        link_quat:      torch.tensor (N*4) [HMD, L, R]
+        link_pos:       torch.tensor (N*3) [HMD, L, R, IMU]
+        link_quat:      torch.tensor (N*4) [HMD, L, R, IMU]
         button_states:  dict
             left_stick:     float (2,)
             left_trigger:   float
@@ -132,12 +132,18 @@ class XRClient:
             dtype=torch.float32,
             device=self.device,
         )
+        body_imu_rot = torch.tensor(
+            self._parse_float_block(parts, "BODYIMU", 4),
+            dtype=torch.float32,
+            device=self.device,
+        )
 
         link_pos = torch.stack(
             [
                 hmd_pose[:3],
                 left_hand_pose[:3],
                 right_hand_pose[:3],
+                torch.zeros(3, device=self.device),  # IMU has no position
             ],
             dim=0,
         )
@@ -146,6 +152,7 @@ class XRClient:
                 hmd_pose[3:],
                 left_hand_pose[3:],
                 right_hand_pose[3:],
+                body_imu_rot,
             ],
             dim=0,
         )

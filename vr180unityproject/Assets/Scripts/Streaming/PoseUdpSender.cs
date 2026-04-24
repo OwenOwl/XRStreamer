@@ -9,6 +9,7 @@ public class PoseUdpSender : MonoBehaviour
 {
     [Header("Source")]
     public PoseSource poseSource;
+    public IMUSource imuSource;
 
     [Header("UDP")]
     public string targetIp = "255.255.255.255";
@@ -96,6 +97,12 @@ public class PoseUdpSender : MonoBehaviour
         if (!poseSource.ok)
             return;
 
+        Quaternion bodyImuRot = Quaternion.identity;
+        if (imuSource.HasData())
+        {
+            bodyImuRot = imuSource.GetImuRotation();
+        }
+
         frameId++;
 
         string msg = string.Format(
@@ -111,7 +118,8 @@ public class PoseUdpSender : MonoBehaviour
             "RIGHTSTICK,{29},{30}," +
             "RIGHTTRIGGER,{31}," +
             "RIGHTGRIP,{32}," +
-            "RIGHTKEYS,{33},{34},{35}",
+            "RIGHTKEYS,{33},{34},{35}," +
+            "BODYIMU,{36},{37},{38},{39}",
             frameId,
 
             poseSource.hmdPos.x, poseSource.hmdPos.y, poseSource.hmdPos.z,
@@ -129,7 +137,8 @@ public class PoseUdpSender : MonoBehaviour
             poseSource.rightStick.x, poseSource.rightStick.y,
             poseSource.rightTrigger,
             poseSource.rightGrip,
-            poseSource.rightPrimaryButton, poseSource.rightSecondaryButton, poseSource.rightStickClick
+            poseSource.rightPrimaryButton, poseSource.rightSecondaryButton, poseSource.rightStickClick,
+            bodyImuRot.x, bodyImuRot.y, bodyImuRot.z, bodyImuRot.w
         );
 
         try
