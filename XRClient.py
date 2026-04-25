@@ -13,8 +13,8 @@ class XRClient:
     output format (by .get_frame() method):
         frame_id:       int
         recv_time:      float
-        link_pos:       torch.tensor (N*3) [HMD, L, R, IMU]
-        link_quat:      torch.tensor (N*4) [HMD, L, R, IMU]
+        link_pos:       torch.tensor (N,3) [HMD, L, R, IMU]
+        link_quat:      torch.tensor (N,4) [HMD, L, R]
         button_states:  dict
             left_stick:     float (2,)
             left_trigger:   float
@@ -28,6 +28,7 @@ class XRClient:
             right_a:        int
             right_b:        int
             right_click:    int
+        body_imu:           torch.tensor (3,)
     """
     def __init__(
         self, udp_host: str = "0.0.0.0", udp_port: int = 5005, device: str = "cpu"
@@ -110,7 +111,7 @@ class XRClient:
                 - RIGHTA
                 - RIGHTB
                 - RIGHTCLICK
-            BODYIMU:        float (4),
+            BODYIMU:        float (3),
         """
         parts = msg.split(",")
         
@@ -133,8 +134,8 @@ class XRClient:
             dtype=torch.float32,
             device=self.device,
         )
-        body_imu_rot = torch.tensor(
-            self._parse_float_block(parts, "BODYIMU", 4),
+        body_imu = torch.tensor(
+            self._parse_float_block(parts, "BODYIMU", 3),
             dtype=torch.float32,
             device=self.device,
         )
@@ -144,7 +145,6 @@ class XRClient:
                 hmd_pose[:3],
                 left_hand_pose[:3],
                 right_hand_pose[:3],
-                torch.zeros(3, device=self.device),  # IMU has no position
             ],
             dim=0,
         )
@@ -153,7 +153,6 @@ class XRClient:
                 hmd_pose[3:],
                 left_hand_pose[3:],
                 right_hand_pose[3:],
-                body_imu_rot,
             ],
             dim=0,
         )
@@ -190,6 +189,7 @@ class XRClient:
             "link_pos": link_pos,
             "link_quat": link_quat,
             "button_states": button_states,
+            "body_imu": body_imu,
         }
 
     def _parse_int_block(self, parts: list[str], label: str, nums: int) -> list[int]:

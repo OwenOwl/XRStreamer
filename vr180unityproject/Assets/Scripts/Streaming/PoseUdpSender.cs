@@ -97,10 +97,10 @@ public class PoseUdpSender : MonoBehaviour
         if (!poseSource.ok)
             return;
 
-        Quaternion bodyImuRot = Quaternion.identity;
+        Vector3 bodyImuEulerDeg = Vector3.zero;
         if (imuSource.HasData())
         {
-            bodyImuRot = imuSource.GetImuRotation();
+            bodyImuEulerDeg = imuSource.GetEulerDeg();
         }
 
         frameId++;
@@ -119,7 +119,7 @@ public class PoseUdpSender : MonoBehaviour
             "RIGHTTRIGGER,{31}," +
             "RIGHTGRIP,{32}," +
             "RIGHTKEYS,{33},{34},{35}," +
-            "BODYIMU,{36},{37},{38},{39}",
+            "BODYIMU,{36},{37},{38}",
             frameId,
 
             poseSource.hmdPos.x, poseSource.hmdPos.y, poseSource.hmdPos.z,
@@ -138,7 +138,7 @@ public class PoseUdpSender : MonoBehaviour
             poseSource.rightTrigger,
             poseSource.rightGrip,
             poseSource.rightPrimaryButton, poseSource.rightSecondaryButton, poseSource.rightStickClick,
-            bodyImuRot.x, bodyImuRot.y, bodyImuRot.z, bodyImuRot.w
+            bodyImuEulerDeg.x, bodyImuEulerDeg.y, bodyImuEulerDeg.z
         );
 
         try
