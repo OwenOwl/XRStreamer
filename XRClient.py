@@ -13,7 +13,7 @@ class XRClient:
     output format (by .get_frame() method):
         frame_id:       int
         recv_time:      float
-        link_pos:       torch.tensor (N,3) [HMD, L, R, IMU]
+        link_pos:       torch.tensor (N,3) [HMD, L, R]
         link_quat:      torch.tensor (N,4) [HMD, L, R]
         button_states:  dict
             left_stick:     float (2,)

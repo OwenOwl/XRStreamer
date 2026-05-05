@@ -9,6 +9,127 @@ def quat_normalize(q: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
     return q / torch.clamp(torch.linalg.norm(q, dim=-1, keepdim=True), min=eps)
 
 
+def quat_conjugate(q: torch.Tensor) -> torch.Tensor:
+    """
+    Quaternion conjugate for [x, y, z, w].
+    """
+    if q.shape[-1] != 4:
+        raise ValueError(f"Expected (..., 4), got {q.shape}")
+
+    xyz = -q[..., :3]
+    w = q[..., 3:4]
+    return torch.cat([xyz, w], dim=-1)
+
+
+def quat_multiply(q1: torch.Tensor, q2: torch.Tensor) -> torch.Tensor:
+    """
+    Hamilton product for quaternions in [x, y, z, w] format.
+    """
+    if q1.shape[-1] != 4 or q2.shape[-1] != 4:
+        raise ValueError(f"Expected (..., 4), got {q1.shape} and {q2.shape}")
+
+    x1, y1, z1, w1 = q1.unbind(dim=-1)
+    x2, y2, z2, w2 = q2.unbind(dim=-1)
+
+    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
+    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
+    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+
+    return quat_normalize(torch.stack([x, y, z, w], dim=-1))
+
+
+def quat_apply(q: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
+    """
+    Rotate vector(s) v by quaternion(s) q, where q is [x, y, z, w].
+
+    Args:
+        q: (..., 4)
+        v: (..., 3)
+
+    Returns:
+        (..., 3)
+    """
+    if q.shape[-1] != 4:
+        raise ValueError(f"Expected q as (..., 4), got {q.shape}")
+    if v.shape[-1] != 3:
+        raise ValueError(f"Expected v as (..., 3), got {v.shape}")
+
+    q = quat_normalize(q)
+    q_xyz = q[..., :3]
+    q_w = q[..., 3:4]
+
+    t = 2.0 * torch.cross(q_xyz, v, dim=-1)
+    return v + q_w * t + torch.cross(q_xyz, t, dim=-1)
+
+
+def quat_to_rpy(q: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Convert quaternion(s) [x, y, z, w] to roll, pitch, yaw in radians.
+
+    Convention:
+        - Equivalent to intrinsic YPR (yaw-pitch-roll), or
+        - Extrinsic XYZ (roll-pitch-yaw).
+
+    Returns:
+        roll: (...,)
+        pitch: (...,)
+        yaw: (...,)
+    """
+    if q.shape[-1] != 4:
+        raise ValueError(f"Expected (..., 4), got {q.shape}")
+
+    q = quat_normalize(q)
+    x, y, z, w = q.unbind(dim=-1)
+
+    sinr_cosp = 2.0 * (w * x + y * z)
+    cosr_cosp = 1.0 - 2.0 * (x * x + y * y)
+    roll = torch.atan2(sinr_cosp, cosr_cosp)
+
+    sinp = 2.0 * (w * y - z * x)
+    pitch = torch.asin(torch.clamp(sinp, min=-1.0, max=1.0))
+
+    siny_cosp = 2.0 * (w * z + x * y)
+    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+    yaw = torch.atan2(siny_cosp, cosy_cosp)
+
+    return roll, pitch, yaw
+
+
+def quat_extract_yaw(q: torch.Tensor) -> torch.Tensor:
+    """
+    Extract yaw angle (rotation around +z axis) from quaternion(s) [x, y, z, w].
+
+    Returns:
+        (...,) yaw in radians.
+    """
+    _, _, yaw = quat_to_rpy(q)
+    return yaw
+
+
+def quat_extract_roll_pitch(q: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Extract roll and pitch (radians) from quaternion(s) [x, y, z, w].
+
+    Returns:
+        roll: (...,)
+        pitch: (...,)
+    """
+    roll, pitch, _ = quat_to_rpy(q)
+    return roll, pitch
+
+
+def quat_from_yaw(yaw: torch.Tensor) -> torch.Tensor:
+    """
+    Build yaw-only quaternion(s) [x, y, z, w] from yaw angle(s) in radians.
+    """
+    half = 0.5 * yaw
+    zeros = torch.zeros_like(half)
+    z = torch.sin(half)
+    w = torch.cos(half)
+    return torch.stack([zeros, zeros, z, w], dim=-1)
+
+
 def quat_to_matrix(q: torch.Tensor) -> torch.Tensor:
     """
     Convert quaternion(s) [x, y, z, w] to rotation matrix/matrices.

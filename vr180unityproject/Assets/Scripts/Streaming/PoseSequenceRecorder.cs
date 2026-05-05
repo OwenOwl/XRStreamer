@@ -64,7 +64,7 @@ public class PoseSequenceRecorder : MonoBehaviour
     //  hmd_px,hmd_py,hmd_pz,hmd_qx,hmd_qy,hmd_qz,hmd_qw,
     //  left_px,left_py,left_pz,left_qx,left_qy,left_qz,left_qw,
     //  right_px,right_py,right_pz,right_qx,right_qy,right_qz,right_qw,
-    //  imu_qx,imu_qy,imu_qz,imu_qw,
+    //  imu_r,imu_p,imu_y,
     //  left_trigger]
     private readonly List<float[]> recordedRows = new List<float[]>(8192);
 
@@ -152,8 +152,7 @@ public class PoseSequenceRecorder : MonoBehaviour
         if (!isRecording)
             return;
 
-        Quaternion imuQ = imuSource.GetImuRotation();
-        
+        Vector3 imuEuler = imuSource.GetEulerDeg();
         float[] row = new float[27];
         int k = 0;
 
@@ -186,11 +185,10 @@ public class PoseSequenceRecorder : MonoBehaviour
         row[k++] = rightRot.z;
         row[k++] = rightRot.w;
 
-        // IMU quaternion only
-        row[k++] = imuQ.x;
-        row[k++] = imuQ.y;
-        row[k++] = imuQ.z;
-        row[k++] = imuQ.w;
+        // IMU rpy only
+        row[k++] = imuEuler.x;
+        row[k++] = imuEuler.y;
+        row[k++] = imuEuler.z;
 
         // Left trigger
         row[k++] = leftTrigger;
@@ -248,7 +246,7 @@ public class PoseSequenceRecorder : MonoBehaviour
             "hmd_px,hmd_py,hmd_pz,hmd_qx,hmd_qy,hmd_qz,hmd_qw," +
             "left_px,left_py,left_pz,left_qx,left_qy,left_qz,left_qw," +
             "right_px,right_py,right_pz,right_qx,right_qy,right_qz,right_qw," +
-            "imu_qx,imu_qy,imu_qz,imu_qw," +
+            "imu_r,imu_p,imu_y," +
             "left_trigger"
         );
 
@@ -320,7 +318,7 @@ public class PoseSequenceRecorder : MonoBehaviour
             "    \"left_quat_xyzw\",\n" +
             "    \"right_pos_xyz\",\n" +
             "    \"right_quat_xyzw\",\n" +
-            "    \"imu_quat_xyzw\"\n" +
+            "    \"imu_rpy\"\n" +
             "  ],\n" +
             "}\n";
 
