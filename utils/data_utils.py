@@ -153,13 +153,13 @@ def build_pose_training_data(data: torch.Tensor, ema_alpha: float = 0.2) -> dict
 		"right_rel_vel_yaw_inv_ema": right_rel_vel_yaw_inv_ema,
 	}
 	imu_rpy = pose_sequence[:, 22:25].clone()
-	imu_yaw = imu_rpy[:, 2]
+	imu_rpy_cur = imu_rpy[:] - imu_rpy[0]
 	hmd_yaw_deg = torch.rad2deg(hmd_yaw)
-	yaw_delta0 = hmd_yaw_deg[0] - imu_yaw[0]
-	imu_rpy[:, 2] = imu_yaw + yaw_delta0 - hmd_yaw_deg
+	hmd_yaw_deg_cur = hmd_yaw_deg - hmd_yaw_deg[0]
+	imu_rpy_cur[:, 2] = imu_rpy_cur[:, 2] - hmd_yaw_deg_cur
 
 	targets = {
-		"imu_rpy": imu_rpy,
+		"imu_rpy": imu_rpy_cur,
 	}
 
 	return {
