@@ -1,7 +1,7 @@
 """
 Real-time inference for torso IMU prediction.
 
-Input per frame (22D, Unity coordinates):
+Input per frame (21D, Genesis coordinates):
     [time,
      hmd_px, hmd_py, hmd_pz, hmd_qx, hmd_qy, hmd_qz, hmd_qw,
      left_px, left_py, left_pz, left_qx, left_qy, left_qz, left_qw,
@@ -56,23 +56,24 @@ class OnlinePoseFeatureBuilder:
             inst = (cur - prev) / dt
         return self.ema_alpha * inst + (1.0 - self.ema_alpha) * prev_ema
 
-    def step(self, frame_22d: torch.Tensor) -> torch.Tensor:
+    def step(self, frame_21d: torch.Tensor, frame_time: float) -> torch.Tensor:
         """
         Args:
-            frame_22d: shape (22,), Genesis coordinates.
+            frame_21d: shape (21,), Genesis coordinates.
+            frame_time: timestamp for this frame in seconds.
 
         Returns:
-            Feature vector of shape (19,) in Genesis coordinates.
+            Feature vector of shape (19) in Genesis coordinates.
         """
-        frame = torch.as_tensor(frame_22d, dtype=torch.float32, device=self.device)
-        if frame.ndim != 1 or frame.numel() != 22:
-            raise ValueError(f"Expected input shape (22,), got {tuple(frame.shape)}")
+        frame = torch.as_tensor(frame_21d, dtype=torch.float32, device=self.device)
+        if frame.ndim != 1 or frame.numel() != 21:
+            raise ValueError(f"Expected input shape (21,), got {tuple(frame.shape)}")
 
-        t = frame[0]
-        hmd_pos = frame[1:4]
-        hmd_quat = frame[4:8]
-        left_pos = frame[8:11]
-        right_pos = frame[15:18]
+        t = torch.tensor(frame_time, dtype=torch.float32, device=self.device)
+        hmd_pos = frame[0:3]
+        hmd_quat = frame[3:7]
+        left_pos = frame[7:10]
+        right_pos = frame[14:17]
 
         hmd_roll, hmd_pitch, hmd_yaw = quat_to_rpy(hmd_quat[None, :])
         hmd_roll = hmd_roll[0]
@@ -135,7 +136,7 @@ class RealTimeIMUPredictor:
 
     def __init__(
         self,
-        checkpoint_path: str | Path,
+        checkpoint_path: str | Path = Path(__file__).parent / "checkpoints/checkpoint.ckpt",
         window: int = 32,
         ema_alpha: float = 0.2,
         device: str | torch.device = "cpu",
@@ -201,23 +202,23 @@ class RealTimeIMUPredictor:
         return x.unsqueeze(0)  # (1, W, 19)
 
     @torch.no_grad()
-    def predict(self, frame_22d: torch.Tensor) -> dict[str, torch.Tensor]:
+    def predict(self, frame_21d: torch.Tensor, frame_time: float) -> dict[str, torch.Tensor]:
         """
-        Push one 22D frame and get the current prediction.
+        Push one 21D frame and get the current prediction.
 
         Args:
-            frame_22d: (22,) Genesis-space frame.
+            frame_21d: (21,) Genesis-space frame.
+            frame_time: timestamp for this frame in seconds.
 
         Returns:
             dict with:
               - imu_rpy_hmd_yaw_frame_deg: (3,) tensor [roll, pitch, yaw]
               - raw_head_output: (4,) tensor [roll, pitch, sin_yaw, cos_yaw]
         """
-        frame = torch.as_tensor(frame_22d, dtype=torch.float32, device=self.device)
-        if frame.ndim != 1 or frame.numel() != 22:
-            raise ValueError(f"Expected input shape (22,), got {tuple(frame.shape)}")
+        frame = torch.as_tensor(frame_21d, dtype=torch.float32, device=self.device)
+        if frame.ndim != 1 or frame.numel() != 21:
+            raise ValueError(f"Expected input shape (21,), got {tuple(frame.shape)}")
 
-        frame_time = float(frame[0].item())
         if self._last_time is not None and frame_time == self._last_time:
             if self._last_result is None:
                 raise RuntimeError("Cached frame time exists without cached prediction")
@@ -226,7 +227,7 @@ class RealTimeIMUPredictor:
                 "raw_head_output": self._last_result["raw_head_output"].clone(),
             }
 
-        feat = self.feature_builder.step(frame)
+        feat = self.feature_builder.step(frame, frame_time)
         self.feature_buffer.append(feat)
 
         x = self._make_window_tensor().to(self.device)
@@ -249,5 +250,5 @@ class RealTimeIMUPredictor:
         return result
 
     @torch.no_grad()
-    def predict_imu_rpy(self, frame_22d: torch.Tensor) -> torch.Tensor:
-        return self.predict(frame_22d)["imu_rpy_hmd_yaw_frame_deg"]
+    def predict_imu_rpy(self, frame_21d: torch.Tensor, frame_time: float) -> torch.Tensor:
+        return self.predict(frame_21d, frame_time)["imu_rpy_hmd_yaw_frame_deg"]
