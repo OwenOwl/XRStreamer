@@ -19,26 +19,14 @@ from pathlib import Path
 
 import torch
 
-from .model import TorsoTransformer
+from .training.model import TorsoTransformer
 
-try:
-    from utils.axis_utils import (
-        pos_unity_to_genesis,
-        quat_apply,
-        quat_conjugate,
-        quat_from_yaw,
-        quat_to_rpy,
-        quat_unity_to_genesis,
-    )
-except ImportError:
-    from ..utils.axis_utils import (
-        pos_unity_to_genesis,
-        quat_apply,
-        quat_conjugate,
-        quat_from_yaw,
-        quat_to_rpy,
-        quat_unity_to_genesis,
-    )
+from .utils.axis_utils import (
+    quat_apply,
+    quat_conjugate,
+    quat_from_yaw,
+    quat_to_rpy,
+)
 
 
 class OnlinePoseFeatureBuilder:
@@ -71,7 +59,7 @@ class OnlinePoseFeatureBuilder:
     def step(self, frame_22d: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            frame_22d: shape (22,), Unity coordinates.
+            frame_22d: shape (22,), Genesis coordinates.
 
         Returns:
             Feature vector of shape (19,) in Genesis coordinates.
@@ -81,15 +69,10 @@ class OnlinePoseFeatureBuilder:
             raise ValueError(f"Expected input shape (22,), got {tuple(frame.shape)}")
 
         t = frame[0]
-        hmd_pos_u = frame[1:4][None, :]
-        hmd_quat_u = frame[4:8][None, :]
-        left_pos_u = frame[8:11][None, :]
-        right_pos_u = frame[15:18][None, :]
-
-        hmd_pos = pos_unity_to_genesis(hmd_pos_u)[0]
-        hmd_quat = quat_unity_to_genesis(hmd_quat_u)[0]
-        left_pos = pos_unity_to_genesis(left_pos_u)[0]
-        right_pos = pos_unity_to_genesis(right_pos_u)[0]
+        hmd_pos = frame[1:4]
+        hmd_quat = frame[4:8]
+        left_pos = frame[8:11]
+        right_pos = frame[15:18]
 
         hmd_roll, hmd_pitch, hmd_yaw = quat_to_rpy(hmd_quat[None, :])
         hmd_roll = hmd_roll[0]
@@ -167,6 +150,8 @@ class RealTimeIMUPredictor:
 
         self.feature_builder = OnlinePoseFeatureBuilder(ema_alpha=ema_alpha, device=self.device)
         self.feature_buffer: deque[torch.Tensor] = deque(maxlen=self.window)
+        self._last_time: float | None = None
+        self._last_result: dict[str, torch.Tensor] | None = None
 
         self.norm_mean: torch.Tensor | None = None
         self.norm_std: torch.Tensor | None = None
@@ -198,6 +183,8 @@ class RealTimeIMUPredictor:
     def reset(self) -> None:
         self.feature_builder.reset()
         self.feature_buffer.clear()
+        self._last_time = None
+        self._last_result = None
 
     def _make_window_tensor(self) -> torch.Tensor:
         if not self.feature_buffer:
@@ -219,14 +206,27 @@ class RealTimeIMUPredictor:
         Push one 22D frame and get the current prediction.
 
         Args:
-            frame_22d: (22,) Unity-space frame.
+            frame_22d: (22,) Genesis-space frame.
 
         Returns:
             dict with:
               - imu_rpy_hmd_yaw_frame_deg: (3,) tensor [roll, pitch, yaw]
               - raw_head_output: (4,) tensor [roll, pitch, sin_yaw, cos_yaw]
         """
-        feat = self.feature_builder.step(frame_22d)
+        frame = torch.as_tensor(frame_22d, dtype=torch.float32, device=self.device)
+        if frame.ndim != 1 or frame.numel() != 22:
+            raise ValueError(f"Expected input shape (22,), got {tuple(frame.shape)}")
+
+        frame_time = float(frame[0].item())
+        if self._last_time is not None and frame_time == self._last_time:
+            if self._last_result is None:
+                raise RuntimeError("Cached frame time exists without cached prediction")
+            return {
+                "imu_rpy_hmd_yaw_frame_deg": self._last_result["imu_rpy_hmd_yaw_frame_deg"].clone(),
+                "raw_head_output": self._last_result["raw_head_output"].clone(),
+            }
+
+        feat = self.feature_builder.step(frame)
         self.feature_buffer.append(feat)
 
         x = self._make_window_tensor().to(self.device)
@@ -237,7 +237,17 @@ class RealTimeIMUPredictor:
         yaw_deg = torch.rad2deg(torch.atan2(pred[2], pred[3]))
 
         imu_rpy = torch.stack([roll_deg, pitch_deg, yaw_deg], dim=0)
-        return {
+        result = {
             "imu_rpy_hmd_yaw_frame_deg": imu_rpy,
             "raw_head_output": pred,
         }
+        self._last_time = frame_time
+        self._last_result = {
+            "imu_rpy_hmd_yaw_frame_deg": imu_rpy.clone(),
+            "raw_head_output": pred.clone(),
+        }
+        return result
+
+    @torch.no_grad()
+    def predict_imu_rpy(self, frame_22d: torch.Tensor) -> torch.Tensor:
+        return self.predict(frame_22d)["imu_rpy_hmd_yaw_frame_deg"]
