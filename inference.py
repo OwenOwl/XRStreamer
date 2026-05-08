@@ -1,9 +1,8 @@
 """
 Real-time inference for torso IMU prediction.
 
-Input per frame (21D, Genesis coordinates):
-    [time,
-     hmd_px, hmd_py, hmd_pz, hmd_qx, hmd_qy, hmd_qz, hmd_qw,
+Input per frame (21D, Genesis coordinates) + separate frame_time (float):
+    [hmd_px, hmd_py, hmd_pz, hmd_qx, hmd_qy, hmd_qz, hmd_qw,
      left_px, left_py, left_pz, left_qx, left_qy, left_qz, left_qw,
      right_px, right_py, right_pz, right_qx, right_qy, right_qz, right_qw]
 
@@ -140,7 +139,7 @@ class RealTimeIMUPredictor:
         window: int = 32,
         ema_alpha: float = 0.2,
         device: str | torch.device = "cpu",
-        normalizer_path: str | Path | None = None,
+        normalizer_path: str | Path | None = Path(__file__).parent / "checkpoints/normalizer.pt",
         model_kwargs: dict | None = None,
     ):
         self.device = torch.device(device)

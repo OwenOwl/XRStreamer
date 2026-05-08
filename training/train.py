@@ -206,6 +206,12 @@ def main():
     # Fit normaliser on training sequences only
     normalizer = RunningNormalizer().fit(train_ds)
 
+    # Save normalizer alongside checkpoints so inference can load it
+    ckpt_dir = Path(args.ckpt_dir)
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(normalizer.state_dict(), ckpt_dir / "normalizer.pt")
+    print(f"Normalizer saved to {ckpt_dir / 'normalizer.pt'}")
+
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,  num_workers=args.num_workers, pin_memory=True)
     val_loader   = DataLoader(val_ds,   batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
