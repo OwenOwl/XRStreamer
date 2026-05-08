@@ -122,7 +122,7 @@ def build_pose_training_data(data: torch.Tensor, ema_alpha: float = 0.2) -> dict
 					- imu_rpy: (T, 3) IMU roll/pitch/yaw where yaw is first-frame
 					  aligned and then made relative to current HMD yaw.
 	"""
-	pose_sequence = process_pose_sequence_unity_to_genesis(data)
+	pose_sequence = process_pose_sequence_unity_to_genesis(data[:, :26])  # (T, 26)
 
 	hmd_pos = pose_sequence[:, 1:4]
 	hmd_quat = pose_sequence[:, 4:8]

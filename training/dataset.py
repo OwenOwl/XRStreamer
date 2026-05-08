@@ -28,7 +28,10 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from ..utils.data_utils import build_pose_training_data
+try:
+    from utils.data_utils import build_pose_training_data
+except ImportError:
+    from ..utils.data_utils import build_pose_training_data
 
 # Feature columns in order
 FEATURE_KEYS = [

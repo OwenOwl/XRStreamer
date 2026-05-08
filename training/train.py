@@ -58,6 +58,24 @@ def torso_loss(
     return total, rp_loss, yaw_loss
 
 
+def torso_angle_metrics(pred: torch.Tensor, tgt: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    pred / tgt: (B, T, 4)  [roll_deg, pitch_deg, sin_yaw, cos_yaw]
+
+    Returns:
+        rp_mae_deg: mean absolute error over roll/pitch channels in degrees.
+        yaw_mae_deg: mean absolute shortest-angle yaw error in degrees.
+    """
+    rp_mae_deg = torch.abs(pred[..., :2] - tgt[..., :2]).mean()
+
+    pred_yaw = torch.atan2(pred[..., 2], pred[..., 3])
+    tgt_yaw = torch.atan2(tgt[..., 2], tgt[..., 3])
+    yaw_err = torch.atan2(torch.sin(pred_yaw - tgt_yaw), torch.cos(pred_yaw - tgt_yaw))
+    yaw_mae_deg = torch.rad2deg(torch.abs(yaw_err)).mean()
+
+    return rp_mae_deg, yaw_mae_deg
+
+
 # ---------------------------------------------------------------------------
 # LightningModule
 # ---------------------------------------------------------------------------
@@ -107,9 +125,12 @@ class TorsoLitModule(L.LightningModule):
             rp_weight=self.hparams.rp_weight,
             yaw_weight=self.hparams.yaw_weight,
         )
+        rp_mae_deg, yaw_mae_deg = torso_angle_metrics(pred, y)
         self.log(f"{stage}/loss",     loss,     prog_bar=True,  sync_dist=True)
         self.log(f"{stage}/rp_loss",  rp_loss,  prog_bar=False, sync_dist=True)
         self.log(f"{stage}/yaw_loss", yaw_loss, prog_bar=False, sync_dist=True)
+        self.log(f"{stage}/rp_mae_deg",  rp_mae_deg,  prog_bar=False, sync_dist=True)
+        self.log(f"{stage}/yaw_mae_deg", yaw_mae_deg, prog_bar=False, sync_dist=True)
         return loss
 
     def training_step(self, batch, _):

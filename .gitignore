@@ -175,3 +175,9 @@ docs/_build/
 # macOS / Linux trash
 # =========================
 .Trash-*
+
+# =========================
+# Training
+# =========================
+wandb/
+checkpoints/
