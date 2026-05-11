@@ -39,7 +39,7 @@ class OnlinePoseFeatureBuilder:
 
     def reset(self) -> None:
         self.start_hmd_pos: torch.Tensor | None = None
-        self.prev_time: torch.Tensor | None = None
+        self.prev_time: float | None = None
         self.prev_hmd_yaw: torch.Tensor | None = None
         self.prev_left_rel: torch.Tensor | None = None
         self.prev_right_rel: torch.Tensor | None = None
@@ -68,7 +68,6 @@ class OnlinePoseFeatureBuilder:
         if frame.ndim != 1 or frame.numel() != 21:
             raise ValueError(f"Expected input shape (21,), got {tuple(frame.shape)}")
 
-        t = torch.tensor(frame_time, dtype=torch.float32, device=self.device)
         hmd_pos = frame[0:3]
         hmd_quat = frame[3:7]
         left_pos = frame[7:10]
@@ -95,13 +94,14 @@ class OnlinePoseFeatureBuilder:
         if self.prev_time is None:
             dt = torch.tensor(1.0, dtype=torch.float32, device=self.device)
         else:
-            dt = torch.clamp(t - self.prev_time, min=self.eps)
+            dt_float = max(frame_time - self.prev_time, self.eps)
+            dt = torch.tensor(dt_float, dtype=torch.float32, device=self.device)
 
         self.hmd_yaw_vel_ema = self._update_ema_vel(hmd_yaw[None], self.prev_hmd_yaw[None] if self.prev_hmd_yaw is not None else None, dt, self.hmd_yaw_vel_ema)
         self.left_rel_vel_ema = self._update_ema_vel(left_rel_yaw_inv, self.prev_left_rel, dt, self.left_rel_vel_ema)
         self.right_rel_vel_ema = self._update_ema_vel(right_rel_yaw_inv, self.prev_right_rel, dt, self.right_rel_vel_ema)
 
-        self.prev_time = t
+        self.prev_time = frame_time
         self.prev_hmd_yaw = hmd_yaw
         self.prev_left_rel = left_rel_yaw_inv
         self.prev_right_rel = right_rel_yaw_inv
