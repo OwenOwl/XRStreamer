@@ -5,6 +5,8 @@ using UnityEngine.UI;
 public class VRStartupPanel : MonoBehaviour
 {
     private const string ForceLeftEyeShaderProp = "_ForceLeftEye";
+    private const string FovDegShaderProp = "_FovDeg";
+    private const string SinHalfThetaMaxShaderProp = "_SinHalfThetaMax";
 
     public enum StreamingMode
     {
@@ -256,6 +258,8 @@ public class VRStartupPanel : MonoBehaviour
 
         bool forceMonoLeft = streamingMode == StreamingMode.MockTwist;
         targetMaterial.SetFloat(ForceLeftEyeShaderProp, forceMonoLeft ? 1f : 0f);
+        targetMaterial.SetFloat(FovDegShaderProp, 120f);
+        targetMaterial.SetFloat(SinHalfThetaMaxShaderProp, 0.5f);
     }
 
     private void ApplyMockTwistMaskMode(StreamingMode streamingMode)
