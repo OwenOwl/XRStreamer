@@ -3,6 +3,7 @@ Shader "Unlit/FisheyeSBS_VR180"
     Properties
     {
         _MainTex ("SBS Video", 2D) = "black" {}
+        _ForceLeftEye ("Force Left Eye For Both Eyes", Float) = 0
         _FovDeg ("Fisheye FOV", Range(120, 220)) = 160
         _SinHalfThetaMax ("[!] Sin(Fov/4)", Float) = 0.6427876096865
         _Radius ("Circle Radius", Range(0.3, 0.7)) = 0.52
@@ -29,6 +30,7 @@ Shader "Unlit/FisheyeSBS_VR180"
             #include "UnityCG.cginc"
 
             sampler2D _MainTex;
+            float _ForceLeftEye;
             float _FovDeg;
             float _SinHalfThetaMax; // precomputed on CPU: sin(radians(_FovDeg) * 0.5)
             float _Radius;
@@ -92,7 +94,8 @@ Shader "Unlit/FisheyeSBS_VR180"
                 if (!all(uvHalf == saturate(uvHalf)))
                     return fixed4(0, 0, 0, 1);
 
-                float2 uv = float2((uvHalf.x + (float)unity_StereoEyeIndex) * 0.5, uvHalf.y);
+                float eyeIndex = (_ForceLeftEye > 0.5) ? 0.0 : (float)unity_StereoEyeIndex;
+                float2 uv = float2((uvHalf.x + eyeIndex) * 0.5, uvHalf.y);
 
                 return tex2D(_MainTex, uv);
             }
