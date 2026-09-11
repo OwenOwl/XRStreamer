@@ -4555,7 +4555,7 @@ MonoBehaviour:
   mode: 0
   headsetTransform: {fileID: 760650}
   imuDelaySeconds: 0.15
-  mockTwistDelaySeconds: 1
+  mockTwistDelaySeconds: 0.5
   robotRotation: {x: 0, y: 0, z: 0, w: 1}
 --- !u!114 &1642479870
 MonoBehaviour:
@@ -6055,7 +6055,7 @@ MonoBehaviour:
   - {fileID: 995099711}
   - {fileID: 1725958095}
   - {fileID: 882478929}
-  defaultCameraImuPortName: COM7
+  defaultCameraImuPortName: COM8
   defaultBodyImuPortName: COM3
   defaultCameraName: OBS Virtual Camera
   defaultTargetIp: 192.168.1.2

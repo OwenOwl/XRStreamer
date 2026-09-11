@@ -258,8 +258,11 @@ public class VRStartupPanel : MonoBehaviour
 
         bool forceMonoLeft = streamingMode == StreamingMode.MockTwist;
         targetMaterial.SetFloat(ForceLeftEyeShaderProp, forceMonoLeft ? 1f : 0f);
-        targetMaterial.SetFloat(FovDegShaderProp, 120f);
-        targetMaterial.SetFloat(SinHalfThetaMaxShaderProp, 0.5f);
+        if (streamingMode == StreamingMode.MockTwist)
+        {
+            targetMaterial.SetFloat(FovDegShaderProp, 120f);
+            targetMaterial.SetFloat(SinHalfThetaMaxShaderProp, 0.5f);
+        }
     }
 
     private void ApplyMockTwistMaskMode(StreamingMode streamingMode)
